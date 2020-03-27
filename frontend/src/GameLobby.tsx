@@ -1,53 +1,50 @@
-import React, { useEffect, useRef, MutableRefObject, useState } from "react"
-import SockJS from "sockjs-client"
-import Stomp, { Client } from "stompjs"
+import React, { MutableRefObject, useEffect, useRef, useState } from "react";
+import Stomp, { Client } from "stompjs";
+import { ClientRef } from "./App";
 import { Game } from "./model/Game";
 
-export const GameLobby = (props: any) => {
+interface GameLobbyProps {
+    readonly stompClient?: Client;
+}
 
-    var stompClient: MutableRefObject<Client | undefined> = useRef();
+export const GameLobby = (props: GameLobbyProps) => {
+    const { stompClient } = props;
 
     const [buttonDisabled, setButtonDisabled] = useState(true)
     const [games, setGames] = useState([] as Game[])
 
     useEffect(() => {
-        const socket = new WebSocket("ws://localhost:8080/gs-guide-websocket")
-        stompClient.current = Stomp.over(socket)
-        stompClient.current?.connect("user", "passwd", (frame: any) => {
+        if (stompClient?.connected) {
             setButtonDisabled(false)
-            stompClient.current?.subscribe("/topic/games", (message: any) => {
-                console.log("message: ", message)
-            });
-            stompClient.current?.subscribe(`/user/queue/listGames`, (message: any) => {
-                console.log("listGames: ", message)
+            stompClient.subscribe(`/topic/games`, (message: any) => {
                 setGames(JSON.parse(message.body))
             })
-        });
-    }, []);
+            stompClient.subscribe(`/user/queue/games`, (message: any) => {
+                setGames(JSON.parse(message.body))
+            })
+            stompClient.send("/app/listGames", {}, "")
+        }
+    }, [stompClient?.connected]);
 
     const newGame = () => {
-        if (stompClient.current?.connected) {
-            stompClient.current?.send("/app/createNewGame", undefined, JSON.stringify({}));
-        }
+        stompClient?.send("/app/createNewGame", {}, JSON.stringify({}));
     };
 
-    const listGames = () => {
-        if (stompClient.current?.connected) {
-            stompClient.current?.send("/app/listGames", undefined, JSON.stringify({}));
-        }
+    const joinGame = (game: Game) => {
+        stompClient?.send("/app/joinGame", {}, JSON.stringify(game))
     }
 
     return (
         <div>
             <button onClick={newGame} disabled={buttonDisabled}>
                 New Game
-        </button>
-            <button onClick={listGames} disabled={buttonDisabled}>
-                List Games
-        </button>
-        <ul>
-            {games.map(game => <li key={game.id}>{game.id}</li>)}
-        </ul>
+            </button>
+            <ul>
+                {games.map(game =>
+                    <li key={game.id} onClick={event => joinGame(game)}>{game.id} {game.activePlayers.map(player => player.name).join(", ")}
+                    </li>)
+                }
+            </ul>
         </div>
     )
 }

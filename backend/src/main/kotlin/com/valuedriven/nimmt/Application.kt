@@ -21,6 +21,7 @@ import org.springframework.web.socket.server.support.DefaultHandshakeHandler
 import java.security.Principal
 import java.util.*
 
+typealias Id = String
 
 @SpringBootApplication
 class Application
@@ -44,31 +45,13 @@ class WebSocketConfig : WebSocketMessageBrokerConfigurer {
             override fun determineUser(request: ServerHttpRequest,
                                        wsHandler: WebSocketHandler,
                                        attributes: Map<String, Any>): Principal? {
-                println("********************** ")
                 return StompPrincipal(UUID.randomUUID().toString())
-            }
-
-            @Throws(Exception::class)
-            fun beforeHandshake(
-                    request: ServerHttpRequest,
-                    response: ServerHttpResponse?,
-                    wsHandler: WebSocketHandler?,
-                    attributes: MutableMap<String, String>): Boolean {
-                if (request is ServletServerHttpRequest) {
-                    val session = request.servletRequest.session
-                    attributes["sessionId"] = session.id
-                }
-                return true
             }
         }
         registry
                 .addEndpoint("/gs-guide-websocket")
                 .setAllowedOrigins("*")
                 .setHandshakeHandler(handshakeHandler)
-        registry
-                .addEndpoint("/gs-guide-websocket")
-                .setAllowedOrigins("*")
-                .setHandshakeHandler(handshakeHandler).withSockJS()
     }
 }
 
@@ -97,11 +80,6 @@ class WebSocketSecurityConfig : AbstractSecurityWebSocketMessageBrokerConfigurer
 class SecurityConfig : WebSecurityConfigurerAdapter() {
     override fun configure(http: HttpSecurity) {
         http
-                .headers { headers ->
-                    headers
-                            // allow same origin to frame our site to support iframe SockJS
-                            .frameOptions { frameOptions -> frameOptions.sameOrigin() }
-                }
                 .authorizeRequests()
                 .antMatchers("/**").permitAll()
                 .anyRequest().authenticated()
