@@ -3,6 +3,7 @@ import Stomp, { Client } from "stompjs";
 import './App.css';
 import { GameLobby } from './GameLobby';
 import { CreatePlayer } from './CreatePlayer';
+import { Player } from './model/Game';
 
 export type ClientRef = MutableRefObject<Client | undefined>
 
@@ -12,7 +13,7 @@ export const App = () => {
   const stompRef: ClientRef = useRef();
   const StompContext = React.createContext(stompClient);
 
-  const [playerName, setPlayerName] = useState("");
+  const [player, setPlayer] = useState(undefined as Player | undefined);
 
   useEffect(() => {
     const socket = new WebSocket("ws://localhost:8080/gs-guide-websocket")
@@ -24,13 +25,12 @@ export const App = () => {
     })
   }, [])
 
-  const showPlayerCreation = playerName === ""
-  const showGameLobby = playerName !== ""
+  const showPlayerCreation = player === undefined
 
   return (
     <StompContext.Provider value={stompClient}>
-      {showPlayerCreation && <CreatePlayer stompClient={stompClient} setPlayerName={setPlayerName}/>}
-      {showGameLobby && <GameLobby stompClient={stompClient} />}
+      {showPlayerCreation && <CreatePlayer stompClient={stompClient} setPlayer={setPlayer}/>}
+      {player !== undefined && <GameLobby stompClient={stompClient} thisPlayer={player}/>}
     </StompContext.Provider>
   );
 }

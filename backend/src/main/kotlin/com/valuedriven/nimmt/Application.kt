@@ -35,7 +35,7 @@ fun main(args: Array<String>) {
 @EnableWebSocketMessageBroker
 class WebSocketConfig : WebSocketMessageBrokerConfigurer {
     override fun configureMessageBroker(config: MessageBrokerRegistry) {
-        config.enableSimpleBroker("/topic", "/queue")
+        config.enableSimpleBroker("/topic", "/queue", "/user")
         config.setApplicationDestinationPrefixes("/app")
         config.setUserDestinationPrefix("/user");
     }

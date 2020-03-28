@@ -4,33 +4,40 @@ import com.valuedriven.nimmt.model.*
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.handler.annotation.SendTo
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.messaging.simp.annotation.SendToUser
 import org.springframework.stereotype.Controller
+import java.lang.RuntimeException
 import java.security.Principal
 import java.util.*
 
 @Controller
-class GameController {
+class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
+
+    // FIXME concurrency?
     private val games = mutableListOf<Game>()
     private val players = mutableMapOf<Id, Player>()
 
     @MessageMapping("/createPlayer")
-    @SendTo("/topic/players")
-    fun createPlayer(playerName: String, user: Principal, headerAccessor: SimpMessageHeaderAccessor): List<Player> {
-        val newPlayer = Player(name = playerName, id = user.name, sessionId = headerAccessor.sessionId.orEmpty())
+    fun createPlayer(playerName: String, user: Principal, headerAccessor: SimpMessageHeaderAccessor) {
+        val newPlayer = Player(name = playerName, id = user.name, sessionId = headerAccessor.sessionId.orEmpty(), inGame = null)
         players.putIfAbsent(user.name, newPlayer)
-        return players.values.toList()
+
+        simpMessagingTemplate.convertAndSendToUser(user.name, "/queue/player", newPlayer)
+        simpMessagingTemplate.convertAndSend("/topic/players", players.values)
     }
 
     @MessageMapping("/createNewGame")
-    @SendTo("/topic/games")
-    fun startNewGame(user: Principal, headerAccessor: SimpMessageHeaderAccessor): List<Game> {
-        val player = players[user.name]
-        if (checkIfPlayerAlreadyHasGame(player)) return games
+    fun startNewGame(user: Principal, headerAccessor: SimpMessageHeaderAccessor) {
+        if (checkIfPlayerAlreadyHasGame(user.name)) return
+
         val gameId = UUID.randomUUID()
-        val newGame = Game(gameId, player?.let { listOf(it) }.orEmpty())
-        games.add(newGame);
-        return games
+        val newGame = Game(id = gameId, creator = user.name, activePlayers = listOf(user.name), started = false)
+        games.add(newGame)
+        simpMessagingTemplate.convertAndSendToUser(user.name, "/queue/game", newGame)
+        simpMessagingTemplate.convertAndSend("/topic/games", games)
+
+        playerJoinsGame(user, gameId)
     }
 
     @MessageMapping("/listGames")
@@ -39,26 +46,29 @@ class GameController {
         return games;
     }
 
+    @MessageMapping("/listPlayers")
+    @SendToUser("/queue/players")
+    fun listPlayers(): List<Player> {
+        return players.values.toList()
+    }
+
     @MessageMapping("/joinGame")
-    @SendTo("/topic/games")
-    fun joinGame(user: Principal, game: Game): List<Game> {
-        val player = players[user.name]
-        if (checkIfPlayerAlreadyHasGame(player)) return games
+    fun joinGame(user: Principal, game: Game) {
+        if (checkIfPlayerAlreadyHasGame(user.name)) return
 
         val gameIndex = games.indexOf(game)
-        val gameToUpdate = games[gameIndex]
+        games[gameIndex] = game.copy(id = game.id, activePlayers = game.activePlayers.plus(user.name), started = false)
+        simpMessagingTemplate.convertAndSend("/topic/games", games)
 
-        games[gameIndex] = gameToUpdate.copy(id = gameToUpdate.id, activePlayers = when (player) {
-            null -> gameToUpdate.activePlayers
-            else -> gameToUpdate.activePlayers.plus(player)
-        })
-
-        return games
+        playerJoinsGame(user, game.id)
     }
 
     @MessageMapping("/startGame")
-    @SendTo("/topic/activeGames")
-    fun startGame(game: Game): GameState {
+    fun startGame(game: Game, user: Principal) {
+        if (game.creator != user.name) {
+            throw RuntimeException("Cannot start a game if not creator")
+        }
+
         val random = Random()
 
         val cards = (1..104)
@@ -68,10 +78,21 @@ class GameController {
         val playerStates = game.activePlayers
                 .map { PlayerState(Heap(emptyList()), Deck(deal10Cards(cards, random)), null) }
 
-        val rows = IntArray(4)
-                .map { Row(number = it + 1, cards = assign1Card(cards, random)) }
+        val rows = (1..4)
+                .map { Row(number = it, cards = assign1Card(cards, random)) }
 
-        return GameState(game.id, game.activePlayers.zip(playerStates).toMap(), rows, 1)
+        simpMessagingTemplate.convertAndSend("/topic/activeGames/" + game.id, GameState(game.id, game.activePlayers.zip(playerStates).toMap(), rows, 1))
+
+        val gameIndex = games.indexOf(game)
+        games[gameIndex] = game.copy(id = game.id, creator = game.creator, activePlayers = game.activePlayers, started = true)
+        simpMessagingTemplate.convertAndSend("/topic/games", games)
+    }
+
+    private fun playerJoinsGame(user: Principal, gameId: UUID?) {
+        players[user.name]?.let { player ->
+            players.replace(user.name, player.copy(name = player.name, id = player.id, sessionId = player.sessionId, inGame = gameId))
+            simpMessagingTemplate.convertAndSend("/topic/players", players.values)
+        }
     }
 
     private fun deal10Cards(cards: MutableList<Card>, random: Random) =
@@ -80,10 +101,7 @@ class GameController {
     private fun assign1Card(cards: MutableList<Card>, random: Random) =
             listOf(cards.removeAt(random.nextInt(cards.size)))
 
-    private fun checkIfPlayerAlreadyHasGame(player: Player?): Boolean {
-        if (games.any { it.activePlayers.contains(player) }) {
-            return true
-        }
-        return false
+    private fun checkIfPlayerAlreadyHasGame(player: Id): Boolean {
+        return games.any { it.activePlayers.contains(player) || it.creator == player }
     }
 }

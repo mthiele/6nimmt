@@ -1,18 +1,21 @@
 import React, { useState } from "react"
-import { Client } from "stompjs"
+import { Client, Message } from "stompjs"
+import { Player } from "./model/Game";
 
 interface CreatePlayerProps {
     stompClient: Client | undefined;
-    setPlayerName: (playerName: string) => void;
+    setPlayer: (player: Player) => void;
 }
 
 export const CreatePlayer = (props: CreatePlayerProps) => {
-    const { stompClient, setPlayerName } = props;
+    const { stompClient, setPlayer } = props;
     const [name, setName] = useState("")
 
     const joinLobby = () => {
-        stompClient?.send("/app/createPlayer", {}, name);
-        setPlayerName(name);
+        stompClient?.subscribe("/user/queue/player", (message: Message) => {
+            setPlayer(JSON.parse(message.body))
+        })
+        stompClient?.send("/app/createPlayer", {}, name)
     }
 
     return (
