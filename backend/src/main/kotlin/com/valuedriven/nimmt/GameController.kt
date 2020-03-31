@@ -1,8 +1,10 @@
 package com.valuedriven.nimmt
 
+import com.valuedriven.nimmt.messages.PlayCardMessage
+import com.valuedriven.nimmt.messages.StartRound
+import com.valuedriven.nimmt.messages.StartRoundMessage
 import com.valuedriven.nimmt.model.*
 import org.springframework.messaging.handler.annotation.MessageMapping
-import org.springframework.messaging.handler.annotation.SendTo
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.messaging.simp.annotation.SendToUser
@@ -17,6 +19,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     // FIXME concurrency?
     private val games = mutableListOf<Game>()
     private val players = mutableMapOf<Id, Player>()
+    private val gameStates = mutableMapOf<UUID, GameState>()
 
     @MessageMapping("/createPlayer")
     fun createPlayer(playerName: String, user: Principal, headerAccessor: SimpMessageHeaderAccessor) {
@@ -81,12 +84,24 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         val rows = (1..4)
                 .map { Row(number = it, cards = assign1Card(cards, random)) }
 
-        simpMessagingTemplate.convertAndSend("/topic/activeGames/" + game.id, GameState(game.id, game.activePlayers.zip(playerStates).toMap(), rows, 1))
+        gameStates[game.id] = GameState(roundNumber = 1, playerStates = game.activePlayers.zip(playerStates).toMap(), rows = rows)
 
         val gameIndex = games.indexOf(game)
         games[gameIndex] = game.copy(id = game.id, creator = game.creator, activePlayers = game.activePlayers, started = true)
         simpMessagingTemplate.convertAndSend("/topic/games", games)
+
+        game.activePlayers.forEachIndexed { index, player ->
+            simpMessagingTemplate.convertAndSendToUser(player, activeGame(game),
+                    StartRoundMessage(payload = StartRound(roundNumber = 1, playerState = playerStates[index], rows = rows)))
+        }
     }
+
+    @MessageMapping("/playCard")
+    fun playCard(user: Principal, message: PlayCardMessage) {
+        println("********************************** $message")
+    }
+
+    private fun activeGame(game: Game) = "/queue/activeGames/" + game.id
 
     private fun playerJoinsGame(user: Principal, gameId: UUID?) {
         players[user.name]?.let { player ->

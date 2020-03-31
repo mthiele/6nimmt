@@ -1,46 +1,63 @@
-import React, { MutableRefObject, useEffect, useRef, useState } from "react";
-import Stomp, { Client, Message } from "stompjs";
+import React, { useEffect, useState } from "react";
+import { Client, Message } from "stompjs";
 import { Game, Player } from "./model/Game";
-import classNames from "classnames";
+import { MessageTypes, playCard } from "./model/Messages";
 
 interface GameLobbyProps {
     readonly stompClient?: Client;
     readonly thisPlayer: Player;
+
+    readonly startedGame: (gameId: string) => void;
 }
 
 export const GameLobby = (props: GameLobbyProps) => {
-    const { stompClient, thisPlayer } = props;
+    const { stompClient, thisPlayer, startedGame } = props;
 
     const [buttonDisabled, setButtonDisabled] = useState(true)
     const [games, setGames] = useState([] as Game[])
     const [players, setPlayers] = useState([] as Player[])
+    const [gameId, setGameId] = useState("")
 
     useEffect(() => {
         if (stompClient?.connected) {
             setButtonDisabled(false)
-            stompClient.subscribe(`/topic/games`, (message: Message) => {
+            const gamesSubscription = stompClient.subscribe(`/topic/games`, (message: Message) => {
                 setGames(JSON.parse(message.body))
             })
-            stompClient.subscribe(`/user/queue/games`, (message: Message) => {
+            const myGamesSubscription = stompClient.subscribe(`/user/queue/games`, (message: Message) => {
                 setGames(JSON.parse(message.body))
             })
             stompClient.send("/app/listGames", {}, "")
 
-            stompClient.subscribe("/topic/players", (message: Message) => {
+            const playersSubsription = stompClient.subscribe("/topic/players", (message: Message) => {
                 setPlayers(JSON.parse(message.body))
             })
-            stompClient.subscribe("/user/queue/players", (message: Message) => {
+            const myPlayersSubscription = stompClient.subscribe("/user/queue/players", (message: Message) => {
                 setPlayers(JSON.parse(message.body))
             })
             stompClient.send("/app/listPlayers", {}, "")
+
+            return () => {
+                gamesSubscription.unsubscribe()
+                myGamesSubscription.unsubscribe()
+                playersSubsription.unsubscribe()
+                myPlayersSubscription.unsubscribe()
+            }
         }
     }, [stompClient?.connected]);
 
-    const subscribeToGame = (gameId: string) => {
-        stompClient?.subscribe(`/topic/activeGames/${gameId}`, (message: Message) => {
-            console.log(message.body)
-        })
-    }
+    useEffect(() => {
+        if (gameId !== "") {
+            const subsription = stompClient?.subscribe(`/user/queue/activeGames/${gameId}`, (message: Message) => {
+                const gameMessage = JSON.parse(message.body) as MessageTypes;
+                switch (gameMessage.messageType) {
+                    case "startRound":
+                            startedGame(gameId)
+                            subsription?.unsubscribe()
+                }
+            })
+        }
+    }, [gameId, games])
 
     const playerIsPartOfGame = (game: Game) => {
         return game.creator === thisPlayer.id || game.activePlayers.find(player => thisPlayer.id === player);
@@ -53,11 +70,10 @@ export const GameLobby = (props: GameLobbyProps) => {
     const canCreateNewGame = !playerIsPartOfAnyGame()
 
     const createNewGame = () => {
-        stompClient?.send("/app/createNewGame", {}, JSON.stringify({}));
         stompClient?.subscribe("/user/queue/game", (message: Message) => {
-            const gameId = JSON.parse(message.body).id
-            subscribeToGame(gameId)
+            setGameId(JSON.parse(message.body).id)
         })
+        stompClient?.send("/app/createNewGame", {}, JSON.stringify({}));
     };
 
     const canJoinGame = (game: Game) => {
@@ -65,7 +81,7 @@ export const GameLobby = (props: GameLobbyProps) => {
     }
 
     const joinGame = (game: Game) => {
-        subscribeToGame(game.id)
+        setGameId(game.id)
         stompClient?.send("/app/joinGame", {}, JSON.stringify(game))
     }
 

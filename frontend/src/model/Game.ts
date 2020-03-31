@@ -11,3 +11,22 @@ export interface Player {
     readonly sessionId: string;
     readonly inGame: string | undefined;
 }
+
+export interface PlayerState {
+    readonly heap: Heap
+    readonly deck: Deck
+    readonly playedCard: Card | undefined   
+}
+
+export interface Heap {
+    readonly cards: Card[]
+}
+
+export interface Deck {
+    readonly cards: Card[]
+}
+
+export interface Card {
+    readonly value: number
+    readonly points: number
+}
