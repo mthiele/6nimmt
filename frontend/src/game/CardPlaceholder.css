@@ -1,0 +1,30 @@
+.card-placeholder-container {
+    display: flex;
+    justify-content: center;
+
+}
+
+.card-placeholder {
+    width: 6rem;
+    height: 8rem;
+    padding: 0.5rem;
+    margin: 1rem;
+}
+
+.card-placeholder.inactive {
+    background-color: #f7f9ff;
+}
+
+.card-placeholder.can-drop {
+    border-style: dashed;
+    border-width: 0.1rem;
+    border-radius: 0.5rem;
+    background-color: #e6ecff;
+}
+
+.card-placeholder.active {
+    border-style: dashed;
+    border-width: 0.1rem;
+    border-radius: 0.5rem;
+    background-color: #ccd8ff;
+}

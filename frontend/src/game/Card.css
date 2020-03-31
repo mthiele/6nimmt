@@ -1,22 +1,42 @@
-.card-container {
+.card-hand {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
 }
 
+.card-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: left;
+}
+
 .card {
-    border-style: solid;
+    border-style: ridge;
+    border-radius: 5%;
     width: 6rem;
     height: 8rem;
     padding: 0.5rem;
     margin: 1rem;
+    background-color: #eeeeee;
 }
 
 .card .points {
-    font-style: italic;
-    text-align: center;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
     margin-bottom: -21px;
+}
+
+.card .points .point {
+    background-size: contain;
+    background-image: url("bull.svg");
+    background-repeat: no-repeat;
+    width: 1rem;
+    height: 1rem;
+    margin: 0.1rem;
 }
 
 .card .value-container {
@@ -27,7 +47,7 @@
 }
 
 .card .value-container .value {
-    font-size: large;
+    font-size: x-large;
     font-weight: bold;
     text-align: center;
 }

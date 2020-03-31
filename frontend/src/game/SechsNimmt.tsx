@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from "react"
 import { Client, Message } from "stompjs"
-import { MessageTypes, StartRound } from "../model/Messages"
+import { MessageTypes, StartRound, playCard } from "../model/Messages"
 import { SingleCard } from "./Card"
+import { DndProvider } from "react-dnd"
+import Backend from "react-dnd-html5-backend"
+import { CardPlaceholder } from "./CardPlaceholder"
+import { Card } from "../model/Game"
 
 export interface SechsNimmtProps {
     readonly stompClient: Client | undefined
@@ -12,6 +16,7 @@ export const SechsNimmt = (props: SechsNimmtProps) => {
     const { stompClient, gameId } = props
 
     const [gameState, setGameState] = useState(undefined as StartRound | undefined)
+    const [selectedCard, setSelectedCard] = useState(undefined as Card | undefined)
 
     useEffect(() => {
         const subsription = stompClient?.subscribe(`/user/queue/activeGames/${gameId}`, (message: Message) => {
@@ -22,22 +27,28 @@ export const SechsNimmt = (props: SechsNimmtProps) => {
                     subsription?.unsubscribe()
             }
         })
-    })
+    }, [])
+
+    useEffect(() => {
+        if (selectedCard) {
+            stompClient?.send("/app/playCard", {}, JSON.stringify(playCard(selectedCard)))
+        }
+    }, [selectedCard])
 
     return (
-        <div>
+        <DndProvider backend={Backend}>
             {gameState?.rows.map((row, index) =>
-                <div key={index}>
+                <div key={index} className="card-row">
                     {row.cards.map((card, index) =>
-                        <span key={index}>
-                            {card.value}({card.points})
-                        </span>)}
+                        <SingleCard key={index} card={card} />)}
                 </div>)}
             <hr />
-            <div className="card-container">
+            <CardPlaceholder setSelectedCard={setSelectedCard} />
+            <hr />
+            <div className="card-hand">
                 {gameState?.playerState.deck.cards.map((card, index) =>
                     <SingleCard key={index} card={card} />)}
             </div>
-        </div>
+        </DndProvider>
     );
 }
