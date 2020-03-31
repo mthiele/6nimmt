@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Client, Message } from "stompjs";
-import { Game, Player } from "./model/Game";
-import { MessageTypes, playCard } from "./model/Messages";
+import { Game, Player } from "../model/Game";
+import { MessageTypes } from "../model/Messages";
 
 interface GameLobbyProps {
     readonly stompClient?: Client;
@@ -51,13 +51,13 @@ export const GameLobby = (props: GameLobbyProps) => {
             const subsription = stompClient?.subscribe(`/user/queue/activeGames/${gameId}`, (message: Message) => {
                 const gameMessage = JSON.parse(message.body) as MessageTypes;
                 switch (gameMessage.messageType) {
-                    case "startRound":
+                    case "startGame":
                             startedGame(gameId)
                             subsription?.unsubscribe()
                 }
             })
         }
-    }, [gameId, games])
+    }, [gameId])
 
     const playerIsPartOfGame = (game: Game) => {
         return game.creator === thisPlayer.id || game.activePlayers.find(player => thisPlayer.id === player);

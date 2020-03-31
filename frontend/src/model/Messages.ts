@@ -1,9 +1,14 @@
-import { Card, PlayerState } from "./Game"
+import { Card, PlayerState, Row } from "./Game"
 
+export const START_GAME = "startGame"
 export const START_ROUND = "startRound"
 export const PLAY_CARD = "playCard"
 
-export type MessageTypes = StartRoundMessage | PlayCardMessage
+export type MessageTypes = StartedGameMessage | StartRoundMessage | PlayCardMessage
+
+export interface StartedGameMessage {
+    readonly messageType: typeof START_GAME
+}
 
 export interface StartRoundMessage {
     readonly messageType: typeof START_ROUND
@@ -25,4 +30,5 @@ export const playCard = (payload: Card) : PlayCardMessage => {
 export interface StartRound {
     readonly roundNumber: number
     readonly playerState: PlayerState
+    readonly rows: Row[]
 }

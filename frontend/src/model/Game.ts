@@ -30,3 +30,8 @@ export interface Card {
     readonly value: number
     readonly points: number
 }
+
+export interface Row {
+    readonly number: number
+    readonly cards: Card[]
+}

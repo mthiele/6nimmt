@@ -1,6 +1,6 @@
-import React, { useState } from "react"
-import { Client, Message } from "stompjs"
-import { Player } from "./model/Game";
+import React, { useState } from "react";
+import { Client, Message } from "stompjs";
+import { Player } from "../model/Game";
 
 interface CreatePlayerProps {
     stompClient: Client | undefined;

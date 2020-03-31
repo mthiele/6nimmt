@@ -1,6 +1,7 @@
 package com.valuedriven.nimmt
 
 import com.valuedriven.nimmt.messages.PlayCardMessage
+import com.valuedriven.nimmt.messages.StartGameMessage
 import com.valuedriven.nimmt.messages.StartRound
 import com.valuedriven.nimmt.messages.StartRoundMessage
 import com.valuedriven.nimmt.model.*
@@ -90,6 +91,11 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         games[gameIndex] = game.copy(id = game.id, creator = game.creator, activePlayers = game.activePlayers, started = true)
         simpMessagingTemplate.convertAndSend("/topic/games", games)
 
+        game.activePlayers.forEach { player ->
+            simpMessagingTemplate.convertAndSendToUser(player, activeGame(game), StartGameMessage())
+        }
+
+        Thread.sleep(500) // FIXME give the client time to create the game
         game.activePlayers.forEachIndexed { index, player ->
             simpMessagingTemplate.convertAndSendToUser(player, activeGame(game),
                     StartRoundMessage(payload = StartRound(roundNumber = 1, playerState = playerStates[index], rows = rows)))
