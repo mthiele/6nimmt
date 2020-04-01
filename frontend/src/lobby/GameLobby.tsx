@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Client, Message } from "stompjs";
 import { Game, Player } from "../model/Game";
-import { MessageTypes } from "../model/Messages";
+import { MessageTypes, START_GAME } from "../model/Messages";
 
 interface GameLobbyProps {
     readonly stompClient?: Client;
@@ -51,9 +51,9 @@ export const GameLobby = (props: GameLobbyProps) => {
             const subsription = stompClient?.subscribe(`/user/queue/activeGames/${gameId}`, (message: Message) => {
                 const gameMessage = JSON.parse(message.body) as MessageTypes;
                 switch (gameMessage.messageType) {
-                    case "startGame":
-                            startedGame(gameId)
-                            subsription?.unsubscribe()
+                    case START_GAME:
+                        startedGame(gameId)
+                        subsription?.unsubscribe()
                 }
             })
         }

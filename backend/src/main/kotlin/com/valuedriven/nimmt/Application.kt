@@ -21,7 +21,7 @@ import org.springframework.web.socket.server.support.DefaultHandshakeHandler
 import java.security.Principal
 import java.util.*
 
-typealias Id = String
+typealias PlayerId = String
 
 @SpringBootApplication
 class Application

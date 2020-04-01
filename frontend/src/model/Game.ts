@@ -1,29 +1,23 @@
+export type PlayerId = string
+
 export interface Game {
     readonly id: string;
     readonly creator: string;
-    readonly activePlayers: string[];
+    readonly activePlayers: PlayerId[];
     readonly started: boolean;
 }
 
 export interface Player {
     readonly name: string;
-    readonly id: string;
+    readonly id: PlayerId;
     readonly sessionId: string;
     readonly inGame: string | undefined;
 }
 
 export interface PlayerState {
-    readonly heap: Heap
-    readonly deck: Deck
+    readonly heap: Card[]
+    readonly deck: Card[]
     readonly playedCard: Card | undefined   
-}
-
-export interface Heap {
-    readonly cards: Card[]
-}
-
-export interface Deck {
-    readonly cards: Card[]
 }
 
 export interface Card {

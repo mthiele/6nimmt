@@ -1,10 +1,8 @@
 package com.valuedriven.nimmt
 
-import com.valuedriven.nimmt.messages.PlayCardMessage
-import com.valuedriven.nimmt.messages.StartGameMessage
-import com.valuedriven.nimmt.messages.StartRound
-import com.valuedriven.nimmt.messages.StartRoundMessage
+import com.valuedriven.nimmt.messages.*
 import com.valuedriven.nimmt.model.*
+import org.springframework.messaging.handler.annotation.DestinationVariable
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor
 import org.springframework.messaging.simp.SimpMessagingTemplate
@@ -18,8 +16,8 @@ import java.util.*
 class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
     // FIXME concurrency?
-    private val games = mutableListOf<Game>()
-    private val players = mutableMapOf<Id, Player>()
+    private val games = mutableMapOf<UUID, Game>()
+    private val players = mutableMapOf<PlayerId, Player>()
     private val gameStates = mutableMapOf<UUID, GameState>()
 
     @MessageMapping("/createPlayer")
@@ -37,9 +35,9 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
         val gameId = UUID.randomUUID()
         val newGame = Game(id = gameId, creator = user.name, activePlayers = listOf(user.name), started = false)
-        games.add(newGame)
+        games[gameId] = newGame
         simpMessagingTemplate.convertAndSendToUser(user.name, "/queue/game", newGame)
-        simpMessagingTemplate.convertAndSend("/topic/games", games)
+        simpMessagingTemplate.convertAndSend("/topic/games", games.values)
 
         playerJoinsGame(user, gameId)
     }
@@ -47,7 +45,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     @MessageMapping("/listGames")
     @SendToUser("/queue/games")
     fun listGames(): List<Game> {
-        return games;
+        return games.values.toList()
     }
 
     @MessageMapping("/listPlayers")
@@ -60,9 +58,8 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     fun joinGame(user: Principal, game: Game) {
         if (checkIfPlayerAlreadyHasGame(user.name)) return
 
-        val gameIndex = games.indexOf(game)
-        games[gameIndex] = game.copy(id = game.id, activePlayers = game.activePlayers.plus(user.name), started = false)
-        simpMessagingTemplate.convertAndSend("/topic/games", games)
+        games[game.id] = game.copy(id = game.id, activePlayers = game.activePlayers.plus(user.name), started = false)
+        simpMessagingTemplate.convertAndSend("/topic/games", games.values)
 
         playerJoinsGame(user, game.id)
     }
@@ -80,34 +77,72 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
                 .toMutableList()
 
         val playerStates = game.activePlayers
-                .map { PlayerState(Heap(emptyList()), Deck(deal10Cards(cards, random)), null) }
+                .map { PlayerState(heap = emptyList(), deck = deal10Cards(cards, random), playedCard = null) }
 
         val rows = (1..4)
                 .map { Row(number = it, cards = assign1Card(cards, random)) }
 
         gameStates[game.id] = GameState(roundNumber = 1, playerStates = game.activePlayers.zip(playerStates).toMap(), rows = rows)
 
-        val gameIndex = games.indexOf(game)
-        games[gameIndex] = game.copy(id = game.id, creator = game.creator, activePlayers = game.activePlayers, started = true)
-        simpMessagingTemplate.convertAndSend("/topic/games", games)
+        games[game.id] = game.copy(id = game.id, creator = game.creator, activePlayers = game.activePlayers, started = true)
+        simpMessagingTemplate.convertAndSend("/topic/games", games.values)
 
         game.activePlayers.forEach { player ->
-            simpMessagingTemplate.convertAndSendToUser(player, activeGame(game), StartGameMessage())
+            simpMessagingTemplate.convertAndSendToUser(player, activeGame(game.id), StartGameMessage())
         }
 
         Thread.sleep(500) // FIXME give the client time to create the game
         game.activePlayers.forEachIndexed { index, player ->
-            simpMessagingTemplate.convertAndSendToUser(player, activeGame(game),
+            simpMessagingTemplate.convertAndSendToUser(player, activeGame(game.id),
                     StartRoundMessage(payload = StartRound(roundNumber = 1, playerState = playerStates[index], rows = rows)))
         }
     }
 
-    @MessageMapping("/playCard")
-    fun playCard(user: Principal, message: PlayCardMessage) {
-        println("********************************** $message")
+    @MessageMapping("/games/{gameId}/playCard")
+    fun playCard(user: Principal, @DestinationVariable gameId: UUID, message: PlayCardMessage) {
+
+        val playedCard = message.payload ?: throw IllegalArgumentException("Played card cannot be null")
+        val gameState = gameStates[gameId]
+                ?: throw IllegalArgumentException("Cannot find game state with gameId $gameId")
+        val playerState = gameState.playerStates[user.name]
+                ?: throw IllegalArgumentException("Cannot find player state for gameId $gameId and player ${user.name}")
+        val game = games[gameId] ?: throw IllegalArgumentException("Cannot find game with gameId $gameId")
+
+        val newGameState = userPlayedCard(playerState, playedCard, gameState, user)
+        gameStates[gameId] = newGameState
+
+        if (checkWhetherPlayerHasPlayedLastMissingCardThisRound(newGameState)) {
+            sendRevealAllPlayedCards(game, newGameState)
+        } else {
+            sendUserPlayedCard(game, user)
+        }
     }
 
-    private fun activeGame(game: Game) = "/queue/activeGames/" + game.id
+    private fun userPlayedCard(playerState: PlayerState, playedCard: Card, gameState: GameState, user: Principal): GameState {
+        val newPlayerState = playerState.copy(heap = playerState.heap,
+                deck = playerState.deck.minus(playedCard),
+                playedCard = playedCard)
+        return gameState.copy(roundNumber = gameState.roundNumber,
+                rows = gameState.rows,
+                playerStates = gameState.playerStates.minus(user.name).plus(Pair(user.name, newPlayerState)))
+    }
+
+    private fun sendUserPlayedCard(game: Game, user: Principal) {
+        game.activePlayers.forEach { player ->
+            simpMessagingTemplate.convertAndSendToUser(player, activeGame(game.id),
+                    PlayedCardMessage(payload = PlayedCardHidden(player = user.name)))
+        }
+    }
+
+    private fun sendRevealAllPlayedCards(game: Game, gameState: GameState) {
+        game.activePlayers.forEach { player ->
+            val allPlayedCards = gameState.playerStates.map { playerState -> PlayedCard(playerState.key, playerState.value.playedCard!!) }
+            simpMessagingTemplate.convertAndSendToUser(player, activeGame(game.id),
+                    RevealAllPlayedCardsMessage(payload = allPlayedCards))
+        }
+    }
+
+    private fun activeGame(gameId: UUID) = "/queue/activeGames/$gameId"
 
     private fun playerJoinsGame(user: Principal, gameId: UUID?) {
         players[user.name]?.let { player ->
@@ -122,7 +157,13 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     private fun assign1Card(cards: MutableList<Card>, random: Random) =
             listOf(cards.removeAt(random.nextInt(cards.size)))
 
-    private fun checkIfPlayerAlreadyHasGame(player: Id): Boolean {
-        return games.any { it.activePlayers.contains(player) || it.creator == player }
+    private fun checkIfPlayerAlreadyHasGame(player: PlayerId): Boolean {
+        return games.values.any { it.activePlayers.contains(player) || it.creator == player }
+    }
+
+    private fun checkWhetherPlayerHasPlayedLastMissingCardThisRound(gameState: GameState): Boolean {
+        return gameState.playerStates.values.none { playerState ->
+            playerState.playedCard === null
+        }
     }
 }
