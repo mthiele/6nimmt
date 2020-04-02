@@ -1,0 +1,18 @@
+////////////////////////////////////////////////
+// SUPERHERO
+////////////////////////////////////////////////
+$grey-darker:  #1f2d3b;
+$grey-dark:    #2B3E50;
+$grey:         #4E5D6C;
+$grey-light:   #8694a4;
+$grey-lighter: #dee5ed;
+
+$orange:       #DF691A;
+$yellow:       #f0ad4e;
+$green:        #5cb85c;
+$blue:         #5bc0de;
+$red:          #d9534f;
+
+$primary: $orange !default;
+
+$dark: darken($grey-darker, 3);

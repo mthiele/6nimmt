@@ -1,0 +1,18 @@
+@charset "utf-8";
+@import "variables";
+@import "~bulma/bulma.sass";
+
+.Site {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+  }
+  
+ .Site-content {
+    flex: 1;
+  }
+
+  .is-centered-vertically {
+    display: flex;
+    align-items: center;
+  }

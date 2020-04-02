@@ -57,15 +57,13 @@ export const SechsNimmt = (props: SechsNimmtProps) => {
 
     return (
         <DndProvider backend={Backend}>
-            {players.map(player => playedCards.some(playedCard => playedCard[0] === player.id) &&
-                <div>
-                    <span>{player.name} hat Karte gespielt</span>
-                </div>)}
-            {gameState?.rows.map((row, index) =>
-                <div key={index} className="card-row">
-                    {row.cards.map((card, index) =>
-                        <SingleCard key={index} card={card} />)}
-                </div>)}
+            <div className="rows">
+                {gameState?.rows.map((row, index) =>
+                    <div key={index} className="card-row">
+                        {row.cards.map((card, index) =>
+                            <SingleCard key={index} card={card} />)}
+                    </div>)}
+            </div>
             <hr />
             <CardPlaceholder setSelectedCard={setSelectedCard} />
             <hr />

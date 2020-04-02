@@ -95,30 +95,42 @@ export const GameLobby = (props: GameLobbyProps) => {
 
     return (
         <div>
-            <h3>Lobby</h3>
-            <div>Hallo {thisPlayer.name}</div>
-            <hr />
-            {players.map(player => <li key={player.id}>
-                <ul>{player.name} {player.inGame && " (im Spiel)"}</ul>
-            </li>)}
-            <hr />
-            {canCreateNewGame &&
-                <button onClick={createNewGame} disabled={buttonDisabled}>
-                    New Game
-                </button>
-            }
-            <ul>
-                {games.map(game =>
-                    <li key={game.id} style={{ color: game.started ? "grey" : "black" }}>
-                        {game.id} (Ersteller: {players.find(p => p.id === game.creator)?.name}),
+            <h1 className="title is-1">Lobby</h1>
+            <div className="level">
+                <div className="level-left">
+                    <div>Hallo&nbsp;</div>
+                    <strong>{thisPlayer.name}</strong>
+                </div>
+            </div>
+            <div className="columns">
+                <div className="column">
+                    <h5 className="title is-5">Spieler</h5>
+                    <ul className="list">
+                        {players.map(player => <li key={player.id} className="list-item">{player.name} {player.inGame && " (im Spiel)"}</li>)}
+                    </ul>
+                </div>
+                <div className="column">
+                    <h5 className="title is-5">Spiele</h5>
+                    <ul className="list">
+                        {games.map(game =>
+                            <li key={game.id} className="list-item is-centered-vertically" style={{ color: game.started ? "grey" : "black" }}>
+                                {game.id} (Ersteller: {players.find(p => p.id === game.creator)?.name}),
                         {game.activePlayers.filter(player => player !== game.creator).length > 0 && "(Mitspieler: " + game.activePlayers
-                            .filter(player => player !== game.creator)
-                            .map(player => players.find(p => p.id === player)?.name).join(", ") + ") "}
-                        {canJoinGame(game) && <button onClick={event => joinGame(game)}>Beitreten</button>}
-                        {canStartGame(game) && <button onClick={event => startGame(game)}>Starten</button>}
-                    </li>)
-                }
-            </ul>
-        </div>
+                                    .filter(player => player !== game.creator)
+                                    .map(player => players.find(p => p.id === player)?.name).join(", ") + ") "}
+                                    &nbsp;
+                                {canJoinGame(game) && <button className="button" onClick={event => joinGame(game)}>Beitreten</button>}
+                                {canStartGame(game) && <button className="button" onClick={event => startGame(game)}>Starten</button>}
+                            </li>)
+                        }
+                    </ul>
+                    {canCreateNewGame &&
+                        <button className="button is-primary" onClick={createNewGame} disabled={buttonDisabled}>
+                            Neues Spiel
+                    </button>
+                    }
+                </div>
+            </div >
+        </div >
     )
 }

@@ -20,10 +20,19 @@ export const CreatePlayer = (props: CreatePlayerProps) => {
 
     return (
         <div>
-            <input value={name}
-                onInput={event => setName((event.target as any).value)}>
-            </input>
-            <button onClick={joinLobby}>Join Looby</button>
+            <div className="field">
+                <label className="label">Nutzername</label>
+                <div className="control">
+                    <input className="input"
+                        value={name}
+                        onInput={event => setName((event.target as any).value)} />
+                </div>
+            </div>
+            <div className="field">
+                <div className="control">
+                    <button type="submit" className="button is-primary" onClick={joinLobby}>Join Looby</button>
+                </div>
+            </div>
         </div>
     )
 }

@@ -27,10 +27,21 @@ export const App = () => {
   const showPlayerCreation = player === undefined
 
   return (
-    <StompContext.Provider value={stompClient}>
-      {showPlayerCreation && <CreatePlayer stompClient={stompClient} setPlayer={setPlayer} />}
-      {gameId === "" && player !== undefined && <GameLobby stompClient={stompClient} thisPlayer={player} startedGame={setGameId} />}
-      {gameId !== "" && <SechsNimmt stompClient={stompClient} gameId={gameId}/>}
-    </StompContext.Provider>
+    <div className="Site">
+      <div className="Site-content">
+        <div className="container">
+          <StompContext.Provider value={stompClient}>
+            {showPlayerCreation && <CreatePlayer stompClient={stompClient} setPlayer={setPlayer} />}
+            {gameId === "" && player !== undefined && <GameLobby stompClient={stompClient} thisPlayer={player} startedGame={setGameId} />}
+            {gameId !== "" && <SechsNimmt stompClient={stompClient} gameId={gameId} />}
+          </StompContext.Provider>
+        </div>
+      </div>
+      <footer className="footer">
+        <div className="content has-text-centered">
+          Created by Michael Thiele
+        </div>
+      </footer>
+    </div>
   );
 }
