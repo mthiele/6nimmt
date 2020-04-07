@@ -2,16 +2,17 @@ import React, { useEffect, useState } from "react";
 import { Client, Message } from "stompjs";
 import { Game, Player } from "../model/Game";
 import { MessageTypes, START_GAME } from "../model/Messages";
+import { RouteComponentProps } from "@reach/router";
 
 interface GameLobbyProps {
-    readonly stompClient?: Client;
-    readonly thisPlayer: Player;
+    readonly stompClient: Client | undefined;
+    readonly thisPlayer: Player | undefined;
 
     readonly startedGame: (gameId: string) => void;
 }
 
-export const GameLobby = (props: GameLobbyProps) => {
-    const { stompClient, thisPlayer, startedGame } = props;
+export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
+    const { stompClient, thisPlayer, startedGame, navigate } = props;
 
     const [buttonDisabled, setButtonDisabled] = useState(true)
     const [games, setGames] = useState([] as Game[])
@@ -52,15 +53,16 @@ export const GameLobby = (props: GameLobbyProps) => {
                 const gameMessage = JSON.parse(message.body) as MessageTypes;
                 switch (gameMessage.messageType) {
                     case START_GAME:
-                        startedGame(gameId)
                         subsription?.unsubscribe()
+                        navigate && navigate(`/game/${gameId}`)
+                        startedGame(gameId)
                 }
             })
         }
     }, [gameId])
 
     const playerIsPartOfGame = (game: Game) => {
-        return game.creator === thisPlayer.id || game.activePlayers.find(player => thisPlayer.id === player);
+        return game.creator === thisPlayer?.id || game.activePlayers.find(player => thisPlayer?.id === player);
     }
 
     const playerIsPartOfAnyGame = () => {
@@ -86,7 +88,7 @@ export const GameLobby = (props: GameLobbyProps) => {
     }
 
     const canStartGame = (game: Game) => {
-        return !game.started && game.creator === thisPlayer.id
+        return !game.started && game.creator === thisPlayer?.id
     }
 
     const startGame = (game: Game) => {
@@ -99,7 +101,7 @@ export const GameLobby = (props: GameLobbyProps) => {
             <div className="level">
                 <div className="level-left">
                     <div>Hallo&nbsp;</div>
-                    <strong>{thisPlayer.name}</strong>
+                    <strong>{thisPlayer?.name}</strong>
                 </div>
             </div>
             <div className="columns">

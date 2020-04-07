@@ -21,8 +21,9 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     private val gameStates = mutableMapOf<UUID, GameState>()
 
     @MessageMapping("/createPlayer")
-    fun createPlayer(playerName: String, user: Principal, headerAccessor: SimpMessageHeaderAccessor) {
-        val newPlayer = Player(name = playerName, id = user.name, sessionId = headerAccessor.sessionId.orEmpty(), inGame = null)
+    fun createPlayer(playerName: String, user: Principal) {
+        // use a random ID as the given user could be a cached older user
+        val newPlayer = Player(name = playerName, id = UUID.randomUUID().toString(), inGame = null)
         players.putIfAbsent(user.name, newPlayer)
 
         simpMessagingTemplate.convertAndSendToUser(user.name, "/queue/player", newPlayer)
@@ -52,6 +53,21 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     @SendToUser("/queue/players")
     fun listPlayers(): List<Player> {
         return players.values.toList()
+    }
+
+    @MessageMapping("/gameState/{gameId}")
+    fun getGameState(user: Principal, @DestinationVariable gameId: UUID) {
+        println("gameState: $gameId")
+        println("user: ${user.name}")
+        val gameState = getGameState(gameId)
+
+        val playerState = gameState.playerStates[user.name]
+                ?: throw IllegalArgumentException("Cannot find playerState for ${user.name}")
+        val privateGameState = PrivateGameState(roundNumber = gameState.roundNumber,
+                playerState = playerState,
+                rows = gameState.rows)
+
+        simpMessagingTemplate.convertAndSendToUser(user.name, "${activeGame(gameId)}/gameState", privateGameState)
     }
 
     @MessageMapping("/joinGame")
@@ -94,7 +110,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         Thread.sleep(500) // FIXME give the client time to create the game
         game.activePlayers.forEachIndexed { index, player ->
             simpMessagingTemplate.convertAndSendToUser(player, activeGame(game.id),
-                    StartRoundMessage(payload = StartRound(roundNumber = 1, playerState = playerStates[index], rows = rows)))
+                    StartRoundMessage(payload = PrivateGameState(roundNumber = 1, playerState = playerStates[index], rows = rows)))
         }
     }
 
@@ -102,11 +118,10 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     fun playCard(user: Principal, @DestinationVariable gameId: UUID, message: PlayCardMessage) {
 
         val playedCard = message.payload ?: throw IllegalArgumentException("Played card cannot be null")
-        val gameState = gameStates[gameId]
-                ?: throw IllegalArgumentException("Cannot find game state with gameId $gameId")
+        val gameState = getGameState(gameId)
         val playerState = gameState.playerStates[user.name]
                 ?: throw IllegalArgumentException("Cannot find player state for gameId $gameId and player ${user.name}")
-        val game = games[gameId] ?: throw IllegalArgumentException("Cannot find game with gameId $gameId")
+        val game = getGame(gameId)
 
         val newGameState = userPlayedCard(playerState, playedCard, gameState, user)
         gameStates[gameId] = newGameState
@@ -146,7 +161,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
     private fun playerJoinsGame(user: Principal, gameId: UUID?) {
         players[user.name]?.let { player ->
-            players.replace(user.name, player.copy(name = player.name, id = player.id, sessionId = player.sessionId, inGame = gameId))
+            players.replace(user.name, player.copy(name = player.name, id = player.id, inGame = gameId))
             simpMessagingTemplate.convertAndSend("/topic/players", players.values)
         }
     }
@@ -166,4 +181,10 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
             playerState.playedCard === null
         }
     }
+
+    private fun getGame(gameId: UUID) =
+            games[gameId] ?: throw IllegalArgumentException("Cannot find game with id $gameId")
+
+    private fun getGameState(gameId: UUID) = (gameStates[gameId]
+            ?: throw IllegalArgumentException("Cannot find gameState for game with id $gameId"))
 }

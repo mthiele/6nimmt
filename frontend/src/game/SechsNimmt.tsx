@@ -1,3 +1,4 @@
+import { RouteComponentProps } from "@reach/router"
 import React, { useEffect, useState } from "react"
 import { DndProvider } from "react-dnd"
 import Backend from "react-dnd-html5-backend"
@@ -12,7 +13,7 @@ export interface SechsNimmtProps {
     readonly gameId: string
 }
 
-export const SechsNimmt = (props: SechsNimmtProps) => {
+export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
     const { stompClient, gameId } = props
 
     const [players, setPlayers] = useState([] as Player[])
@@ -21,23 +22,34 @@ export const SechsNimmt = (props: SechsNimmtProps) => {
     const [playedCards, setPlayedCards] = useState([] as [PlayerId, Card | undefined][])
 
     useEffect(() => {
-        const subsription = stompClient?.subscribe(`/user/queue/activeGames/${gameId}`, (message: Message) => {
-            const gameMessage = JSON.parse(message.body) as MessageTypes;
-            switch (gameMessage.messageType) {
-                case START_ROUND:
-                    setGameState(gameMessage.payload)
-                    break
-                case PLAYED_CARD:
-                    setPlayedCards(playedCards?.concat([[gameMessage.payload.player, undefined]]))
-                    break
-                case REVEAL_ALL_CARDS:
-                    setPlayedCards(gameMessage.payload.map(playedCard => [playedCard.player, playedCard.card]))
-                    break
-                default:
+        if (stompClient?.connected) {
+            if (gameState === undefined) {
+                const subscription = stompClient?.subscribe(`/user/queue/activeGames/${gameId}/gameState`, (message: Message) => {
+                    console.log("+++++++++++++++++++++++++++++++++++++++++")
+                    console.log(JSON.parse(message.body))
+                    setGameState(JSON.parse(message.body))
+                    subscription?.unsubscribe()
+                })
+                stompClient?.send(`/app/gameState/${gameId}`, {}, "")
             }
-        })
-        return () => subsription?.unsubscribe()
-    }, [])
+            const subsription = stompClient?.subscribe(`/user/queue/activeGames/${gameId}`, (message: Message) => {
+                const gameMessage = JSON.parse(message.body) as MessageTypes;
+                switch (gameMessage.messageType) {
+                    case START_ROUND:
+                        setGameState(gameMessage.payload)
+                        break
+                    case PLAYED_CARD:
+                        setPlayedCards(playedCards?.concat([[gameMessage.payload.player, undefined]]))
+                        break
+                    case REVEAL_ALL_CARDS:
+                        setPlayedCards(gameMessage.payload.map(playedCard => [playedCard.player, playedCard.card]))
+                        break
+                    default:
+                }
+            })
+            return () => subsription?.unsubscribe()
+        }
+    }, [stompClient?.connected])
 
     useEffect(() => {
         const subscription = stompClient?.subscribe("/user/queue/players", (message: Message) => {
@@ -47,7 +59,7 @@ export const SechsNimmt = (props: SechsNimmtProps) => {
         stompClient?.send("/app/listPlayers")
 
         return () => subscription?.unsubscribe()
-    }, [])
+    }, [stompClient?.connected])
 
     useEffect(() => {
         if (selectedCard) {
@@ -57,12 +69,25 @@ export const SechsNimmt = (props: SechsNimmtProps) => {
 
     return (
         <DndProvider backend={Backend}>
-            <div className="rows">
-                {gameState?.rows.map((row, index) =>
-                    <div key={index} className="card-row">
-                        {row.cards.map((card, index) =>
-                            <SingleCard key={index} card={card} />)}
-                    </div>)}
+            <div className="level">
+                <div className="level-left">
+                    <div className="columns">
+                        <div className="column">
+                            {gameState?.rows.map((row, index) =>
+                                <div key={index} className="card-row">
+                                    {row.cards.map((card, index) =>
+                                        <SingleCard key={index} card={card} />)}
+                                </div>)}
+                        </div>
+                    </div>
+                </div>
+                <div className="level-right">
+                    <div className="columns">
+                        <div className="column">
+                            {playedCards.map(playedCard => players.find(player => player.id === playedCard[0])?.name)}
+                        </div>
+                    </div>
+                </div>
             </div>
             <hr />
             <CardPlaceholder setSelectedCard={setSelectedCard} />

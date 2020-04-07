@@ -5,6 +5,7 @@ import { SechsNimmt } from './game/SechsNimmt';
 import { CreatePlayer } from './lobby/CreatePlayer';
 import { GameLobby } from './lobby/GameLobby';
 import { Player } from './model/Game';
+import { Router } from '@reach/router';
 
 export type ClientRef = MutableRefObject<Client | undefined>
 
@@ -17,23 +18,28 @@ export const App = () => {
   const [gameId, setGameId] = useState("")
 
   useEffect(() => {
-    const socket = new WebSocket("ws://localhost:8080/gs-guide-websocket")
-    const stomp = Stomp.over(socket)
-    stomp.connect("", "", (frame: any) => {
-      setStompClient(stomp)
-    })
+    reconnect()
   }, [])
 
-  const showPlayerCreation = player === undefined
+  const reconnect = (onConnect: (stomp: Client) => void = () => {}) => {
+    const socket = new WebSocket("ws://localhost:8080/gs-guide-websocket")
+    const stomp = Stomp.over(socket)
+    stomp.connect({ token: sessionStorage.getItem("6nimmtUser") || "" }, (frame: any) => {
+      setStompClient(stomp)
+      onConnect(stomp)
+    })
+  }
 
   return (
     <div className="Site">
       <div className="Site-content">
         <div className="container">
           <StompContext.Provider value={stompClient}>
-            {showPlayerCreation && <CreatePlayer stompClient={stompClient} setPlayer={setPlayer} />}
-            {gameId === "" && player !== undefined && <GameLobby stompClient={stompClient} thisPlayer={player} startedGame={setGameId} />}
-            {gameId !== "" && <SechsNimmt stompClient={stompClient} gameId={gameId} />}
+            <Router>
+              <CreatePlayer path="/" stompClient={stompClient} setPlayer={setPlayer} reconnect={reconnect}/>
+              <GameLobby path="/gameLobby" stompClient={stompClient} thisPlayer={player} startedGame={setGameId} />
+              <SechsNimmt path="/game/:gameId" stompClient={stompClient} gameId={gameId} />
+            </Router>
           </StompContext.Provider>
         </div>
       </div>

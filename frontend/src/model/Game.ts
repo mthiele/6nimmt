@@ -10,7 +10,6 @@ export interface Game {
 export interface Player {
     readonly name: string;
     readonly id: PlayerId;
-    readonly sessionId: string;
     readonly inGame: string | undefined;
 }
 
