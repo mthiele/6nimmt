@@ -1,7 +1,8 @@
+import { RouteComponentProps } from "@reach/router";
 import React, { useState } from "react";
 import { Client, Message } from "stompjs";
+import { STORAGE_USER } from "../constants";
 import { Player } from "../model/Game";
-import { RouteComponentProps } from "@reach/router";
 
 interface CreatePlayerProps {
     stompClient: Client | undefined;
@@ -16,7 +17,7 @@ export const CreatePlayer = (props: CreatePlayerProps & RouteComponentProps) => 
     const joinLobby = () => {
         const subscription = stompClient?.subscribe("/user/queue/player", (message: Message) => {
             const player = JSON.parse(message.body) as Player
-            sessionStorage.setItem(`6nimmtUser`, player.id)
+            sessionStorage.setItem(STORAGE_USER, player.id)
             setPlayer(player)
 
             subscription?.unsubscribe()

@@ -1,11 +1,12 @@
 import React, { MutableRefObject, useEffect, useState } from 'react';
-import Stomp, { Client } from "stompjs";
+import Stomp, { Client, Message } from "stompjs";
 import './App.css';
 import { SechsNimmt } from './game/SechsNimmt';
 import { CreatePlayer } from './lobby/CreatePlayer';
 import { GameLobby } from './lobby/GameLobby';
 import { Player } from './model/Game';
 import { Router } from '@reach/router';
+import { STORAGE_USER } from './constants';
 
 export type ClientRef = MutableRefObject<Client | undefined>
 
@@ -18,13 +19,20 @@ export const App = () => {
   const [gameId, setGameId] = useState("")
 
   useEffect(() => {
-    reconnect()
+    reconnect((stompClient) => {
+      const subscription = stompClient?.subscribe("/user/queue/players", (message: Message) => {
+        const players = JSON.parse(message.body) as Player[]
+        setPlayer(players.find(p => p.id === sessionStorage.getItem(STORAGE_USER)))
+        subscription.unsubscribe()
+      })
+      stompClient?.send("/app/listPlayers", {}, "")
+    })
   }, [])
 
-  const reconnect = (onConnect: (stomp: Client) => void = () => {}) => {
+  const reconnect = (onConnect: (stomp: Client) => void = () => { }) => {
     const socket = new WebSocket("ws://localhost:8080/gs-guide-websocket")
     const stomp = Stomp.over(socket)
-    stomp.connect({ token: sessionStorage.getItem("6nimmtUser") || "" }, (frame: any) => {
+    stomp.connect({ token: sessionStorage.getItem(STORAGE_USER) || "" }, (frame: any) => {
       setStompClient(stomp)
       onConnect(stomp)
     })
@@ -36,7 +44,7 @@ export const App = () => {
         <div className="container">
           <StompContext.Provider value={stompClient}>
             <Router>
-              <CreatePlayer path="/" stompClient={stompClient} setPlayer={setPlayer} reconnect={reconnect}/>
+              <CreatePlayer path="/" stompClient={stompClient} setPlayer={setPlayer} reconnect={reconnect} />
               <GameLobby path="/gameLobby" stompClient={stompClient} thisPlayer={player} startedGame={setGameId} />
               <SechsNimmt path="/game/:gameId" stompClient={stompClient} gameId={gameId} />
             </Router>

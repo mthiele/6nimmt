@@ -24,7 +24,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     fun createPlayer(playerName: String, user: Principal) {
         // use a random ID as the given user could be a cached older user
         val newPlayer = Player(name = playerName, id = UUID.randomUUID().toString(), inGame = null)
-        players.putIfAbsent(user.name, newPlayer)
+        players.putIfAbsent(newPlayer.id, newPlayer)
 
         simpMessagingTemplate.convertAndSendToUser(user.name, "/queue/player", newPlayer)
         simpMessagingTemplate.convertAndSend("/topic/players", players.values)
@@ -57,8 +57,6 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
     @MessageMapping("/gameState/{gameId}")
     fun getGameState(user: Principal, @DestinationVariable gameId: UUID) {
-        println("gameState: $gameId")
-        println("user: ${user.name}")
         val gameState = getGameState(gameId)
 
         val playerState = gameState.playerStates[user.name]

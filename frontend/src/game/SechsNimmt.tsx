@@ -25,8 +25,6 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
         if (stompClient?.connected) {
             if (gameState === undefined) {
                 const subscription = stompClient?.subscribe(`/user/queue/activeGames/${gameId}/gameState`, (message: Message) => {
-                    console.log("+++++++++++++++++++++++++++++++++++++++++")
-                    console.log(JSON.parse(message.body))
                     setGameState(JSON.parse(message.body))
                     subscription?.unsubscribe()
                 })

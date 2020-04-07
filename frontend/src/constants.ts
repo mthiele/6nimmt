@@ -1,0 +1,1 @@
+export const STORAGE_USER = "6nimmtUser"
