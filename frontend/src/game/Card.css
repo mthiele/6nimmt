@@ -13,10 +13,13 @@
 }
 
 .card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
     border-style: ridge;
     border-radius: 5%;
-    width: 6rem;
-    height: 8rem;
+    width: 5rem;
+    height: 7rem;
     padding: 0.5rem;
     margin: 1rem;
     background-color: #eeeeee;
@@ -27,7 +30,6 @@
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
-    margin-bottom: -21px;
 }
 
 .card .points .point {
@@ -39,14 +41,7 @@
     margin: 0.1rem;
 }
 
-.card .value-container {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.card .value-container .value {
+.card .value {
     font-size: x-large;
     font-weight: bold;
     text-align: center;

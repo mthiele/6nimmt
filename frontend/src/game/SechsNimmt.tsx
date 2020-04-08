@@ -4,9 +4,11 @@ import { DndProvider } from "react-dnd"
 import Backend from "react-dnd-html5-backend"
 import { Client, Message } from "stompjs"
 import { Card, Player, PlayerId } from "../model/Game"
-import { MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, StartRound, START_ROUND } from "../model/Messages"
+import { MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, GameState, START_ROUND } from "../model/Messages"
 import { SingleCard } from "./Card"
 import { CardPlaceholder } from "./CardPlaceholder"
+import { Row as Rows } from "./Rows"
+import { PlayedCards } from "./PlayedCards"
 
 export interface SechsNimmtProps {
     readonly stompClient: Client | undefined
@@ -17,7 +19,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
     const { stompClient, gameId } = props
 
     const [players, setPlayers] = useState([] as Player[])
-    const [gameState, setGameState] = useState(undefined as StartRound | undefined)
+    const [gameState, setGameState] = useState(undefined as GameState | undefined)
     const [selectedCard, setSelectedCard] = useState(undefined as Card | undefined)
     const [playedCards, setPlayedCards] = useState([] as [PlayerId, Card | undefined][])
 
@@ -69,22 +71,10 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
         <DndProvider backend={Backend}>
             <div className="level">
                 <div className="level-left">
-                    <div className="columns">
-                        <div className="column">
-                            {gameState?.rows.map((row, index) =>
-                                <div key={index} className="card-row">
-                                    {row.cards.map((card, index) =>
-                                        <SingleCard key={index} card={card} />)}
-                                </div>)}
-                        </div>
-                    </div>
+                    <Rows gameState={gameState} />
                 </div>
                 <div className="level-right">
-                    <div className="columns">
-                        <div className="column">
-                            {playedCards.map(playedCard => players.find(player => player.id === playedCard[0])?.name)}
-                        </div>
-                    </div>
+                    <PlayedCards playedCards={playedCards} players={players} />
                 </div>
             </div>
             <hr />

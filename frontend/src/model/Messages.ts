@@ -14,10 +14,10 @@ export interface StartedGameMessage {
 
 export interface StartRoundMessage {
     readonly messageType: typeof START_ROUND
-    readonly payload: StartRound
+    readonly payload: GameState
 }
 
-export interface StartRound {
+export interface GameState {
     readonly roundNumber: number
     readonly playerState: PlayerState
     readonly rows: Row[]
