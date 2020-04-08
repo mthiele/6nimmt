@@ -1,25 +1,35 @@
-import React from "react"
+import React, { useState } from "react"
+import { useDrag } from "react-dnd"
 import { Card } from "../model/Game"
-
 import "./Card.css"
-import { useDrag, DragSourceMonitor } from "react-dnd"
 import Constants from "./Constants"
+import classnames from "classnames"
+
 
 export interface CardProps {
     readonly card: Card | undefined
     readonly revealed?: boolean
+    readonly selected?: boolean
+    readonly canDrag?: boolean
+    readonly setSelectedCard?: (card: Card) => void
 }
 
-export const SingleCard = (props: CardProps = { card: undefined, revealed: true }) => {
-    const { card } = props
+export const SingleCard = (props: CardProps = { card: undefined, revealed: true, selected: false, canDrag: false }) => {
+    const { card, selected, canDrag, setSelectedCard } = props
 
     const [, drag] = useDrag({
         item: { type: Constants.CARD, card: card },
     })
 
+    const selectCard = () => {
+        if (setSelectedCard && card) {
+            setSelectedCard(card)
+        }
+    }
+
     if (card) {
         return (
-            <div ref={drag} className="card">
+            <div ref={canDrag ? drag : undefined} className={classnames("card", { selected, "can-be-selected": !!setSelectedCard })} onClick={selectCard} >
                 <div className="points">
                     {Array.from({ length: card.points }).map((ignore, index) =>
                         <span key={index} className="point" />)}
@@ -27,7 +37,7 @@ export const SingleCard = (props: CardProps = { card: undefined, revealed: true 
                 <div className="value">
                     {card.value}
                 </div>
-            </div>
+            </div >
         )
     } else {
         return (

@@ -25,6 +25,14 @@
     background-color: #eeeeee;
 }
 
+.card.selected {
+    background-color: #eeee77;
+}
+
+.card.can-be-selected {
+    cursor: pointer;
+}
+
 .card .points {
     display: flex;
     flex-direction: row;

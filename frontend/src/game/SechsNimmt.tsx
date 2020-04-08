@@ -4,11 +4,10 @@ import { DndProvider } from "react-dnd"
 import Backend from "react-dnd-html5-backend"
 import { Client, Message } from "stompjs"
 import { Card, Player, PlayerId } from "../model/Game"
-import { MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, GameState, START_ROUND } from "../model/Messages"
+import { GameState, MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, START_ROUND } from "../model/Messages"
 import { SingleCard } from "./Card"
-import { CardPlaceholder } from "./CardPlaceholder"
-import { Row as Rows } from "./Rows"
 import { PlayedCards } from "./PlayedCards"
+import { Row as Rows } from "./Rows"
 
 export interface SechsNimmtProps {
     readonly stompClient: Client | undefined
@@ -78,11 +77,9 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                 </div>
             </div>
             <hr />
-            <CardPlaceholder setSelectedCard={setSelectedCard} />
-            <hr />
             <div className="card-hand">
                 {gameState?.playerState.deck.map((card, index) =>
-                    <SingleCard key={index} card={card} />)}
+                    <SingleCard key={index} card={card} selected={selectedCard === card} setSelectedCard={setSelectedCard} />)}
             </div>
         </DndProvider>
     );
