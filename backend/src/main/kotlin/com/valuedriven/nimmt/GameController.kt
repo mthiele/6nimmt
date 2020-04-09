@@ -1,5 +1,6 @@
 package com.valuedriven.nimmt
 
+import com.valuedriven.nimmt.Util.replace
 import com.valuedriven.nimmt.messages.*
 import com.valuedriven.nimmt.model.*
 import org.springframework.messaging.handler.annotation.DestinationVariable
@@ -8,7 +9,6 @@ import org.springframework.messaging.simp.SimpMessageHeaderAccessor
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.messaging.simp.annotation.SendToUser
 import org.springframework.stereotype.Controller
-import java.lang.RuntimeException
 import java.security.Principal
 import java.util.*
 
@@ -93,7 +93,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         val playerStates = game.activePlayers
                 .map { PlayerState(heap = emptyList(), deck = deal10Cards(cards, random), playedCard = null) }
 
-        val rows = (1..4)
+        val rows = (0..3)
                 .map { Row(number = it, cards = assign1Card(cards, random)) }
 
         gameStates[game.id] = GameState(roundNumber = 1, playerStates = game.activePlayers.zip(playerStates).toMap(), rows = rows)
@@ -117,8 +117,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
         val playedCard = message.payload ?: throw IllegalArgumentException("Played card cannot be null")
         val gameState = getGameState(gameId)
-        val playerState = gameState.playerStates[user.name]
-                ?: throw IllegalArgumentException("Cannot find player state for gameId $gameId and player ${user.name}")
+        val playerState = getPlayerState(gameState, user.name)
         val game = getGame(gameId)
 
         val newGameState = userPlayedCard(playerState, playedCard, gameState, user)
@@ -126,9 +125,64 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
         if (checkWhetherPlayerHasPlayedLastMissingCardThisRound(newGameState)) {
             sendRevealAllPlayedCards(game, newGameState)
+            nextPlayerShouldSelectRow(newGameState, gameId)
         } else {
             sendUserPlayedCard(game, user)
         }
+    }
+
+    @MessageMapping("/games/{gameId}/selectedRow")
+    fun rowSelection(user: Principal, @DestinationVariable gameId: UUID, message: SelectedRowMessage) {
+        val rowNumber = message.payload
+                ?: throw IllegalArgumentException("Given row cannot be empty")
+        val gameState = getGameState(gameId)
+        val playerState = getPlayerState(gameState, user.name)
+        val playedCard = playerState.playedCard
+                ?: throw IllegalStateException("Player ${user.name} already placed their card.")
+
+        val selectedRow = gameState.rows[rowNumber]
+
+        val newGameState =
+                if (gameState.rows.all { row -> row.cards.last().value > playedCard.value }
+                        || rowToPlaceCard(gameState, playerState) == selectedRow) {
+
+                    val (newRow, newPlayerState) = if (selectedRow.cards.size == 5)
+                        Pair(Row(number = selectedRow.number, cards = listOf(playedCard)),
+                                playerState.copy(heap = playerState.heap.plus(selectedRow.cards),
+                                        deck = playerState.deck,
+                                        playedCard = null))
+                    else
+                        Pair(Row(number = selectedRow.number, cards = selectedRow.cards.plus(playedCard)),
+                                playerState.copy(heap = playerState.heap,
+                                        deck = playerState.deck,
+                                        playedCard = null))
+
+                    val newRoundNumber =
+                            if (gameState.playerStates.minus(user.name).all { entry -> entry.value.playedCard == null })
+                                gameState.roundNumber + 1
+                            else
+                                gameState.roundNumber
+                    gameState.copy(roundNumber = newRoundNumber,
+                            rows = gameState.rows.replace(selectedRow, newRow),
+                            playerStates = gameState.playerStates.minus(user.name).plus(Pair(user.name, newPlayerState)))
+                } else {
+                    throw IllegalStateException("Card ${playedCard.value} is placed in the wrong row ($rowNumber)")
+                }
+
+        gameStates[gameId] = newGameState
+
+        if (newGameState.roundNumber == gameState.roundNumber) {
+            updateRowsForAllPlayers(newGameState, gameId)
+            nextPlayerShouldSelectRow(newGameState, gameId)
+        } else {
+            gameState.playerStates.keys.forEach { player ->
+                simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId),
+                        StartRoundMessage(PrivateGameState(roundNumber = newGameState.roundNumber,
+                                playerState = getPlayerState(newGameState, player),
+                                rows = newGameState.rows)))
+            }
+        }
+
     }
 
     private fun userPlayedCard(playerState: PlayerState, playedCard: Card, gameState: GameState, user: Principal): GameState {
@@ -152,6 +206,12 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
             val allPlayedCards = gameState.playerStates.map { playerState -> PlayedCard(playerState.key, playerState.value.playedCard!!) }
             simpMessagingTemplate.convertAndSendToUser(player, activeGame(game.id),
                     RevealAllPlayedCardsMessage(payload = allPlayedCards))
+        }
+    }
+
+    private fun updateRowsForAllPlayers(gameState: GameState, gameId: UUID) {
+        gameState.playerStates.keys.forEach { player ->
+            simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId), UpdatedRowsMessage(gameState.rows))
         }
     }
 
@@ -180,9 +240,26 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         }
     }
 
+    private fun nextPlayerShouldSelectRow(gameState: GameState, gameId: UUID) {
+        gameState.playerStates.minBy {
+            it.value.playedCard?.value ?: Int.MAX_VALUE
+        }?.let { (playerId, nextPlayer) ->
+            val selectRow = rowToPlaceCard(gameState, nextPlayer)
+            simpMessagingTemplate.convertAndSendToUser(playerId, activeGame(gameId), SelectRowMessage(selectRow?.number))
+        }
+    }
+
+    private fun rowToPlaceCard(gameState: GameState, playerState: PlayerState) =
+            gameState.rows.filter { row -> (playerState.playedCard?.value ?: 0) - row.cards.last().value > 0 }
+                    .minBy { row -> (playerState.playedCard?.value ?: 0) - row.cards.last().value }
+
     private fun getGame(gameId: UUID) =
             games[gameId] ?: throw IllegalArgumentException("Cannot find game with id $gameId")
 
     private fun getGameState(gameId: UUID) = (gameStates[gameId]
             ?: throw IllegalArgumentException("Cannot find gameState for game with id $gameId"))
+
+    private fun getPlayerState(gameState: GameState, playerId: PlayerId) =
+            (gameState.playerStates[playerId]
+                    ?: throw IllegalArgumentException("Cannot find player state for player $playerId"))
 }

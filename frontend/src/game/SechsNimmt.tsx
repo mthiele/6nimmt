@@ -4,23 +4,27 @@ import { DndProvider } from "react-dnd"
 import Backend from "react-dnd-html5-backend"
 import { Client, Message } from "stompjs"
 import { Card, Player, PlayerId } from "../model/Game"
-import { GameState, MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, START_ROUND } from "../model/Messages"
+import { GameState, MessageTypes, playCard, selectRowMessage, PLAYED_CARD, REVEAL_ALL_CARDS, SELECTED_ROW, SELECT_ROW, START_ROUND, UPDATED_ROWS } from "../model/Messages"
 import { SingleCard } from "./Card"
 import { PlayedCards } from "./PlayedCards"
-import { Row as Rows } from "./Rows"
+import { Rows } from "./Rows"
+import { useRefState } from "../util"
 
 export interface SechsNimmtProps {
     readonly stompClient: Client | undefined
     readonly gameId: string
+    readonly player: Player | undefined
 }
 
 export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
-    const { stompClient, gameId } = props
+    const { stompClient, gameId, player } = props
 
     const [players, setPlayers] = useState([] as Player[])
-    const [gameState, setGameState] = useState(undefined as GameState | undefined)
+    const [gameState, gameStateRef, setGameState] = useRefState(undefined as GameState | undefined)
     const [selectedCard, setSelectedCard] = useState(undefined as Card | undefined)
     const [playedCards, setPlayedCards] = useState([] as [PlayerId, Card | undefined][])
+    const [selectRow, setSelectRow] = useState(undefined as number | undefined)
+    const [selectRowActive, setSelectRowActive] = useState(false)
 
     useEffect(() => {
         if (stompClient?.connected) {
@@ -36,12 +40,27 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                 switch (gameMessage.messageType) {
                     case START_ROUND:
                         setGameState(gameMessage.payload)
+                        setPlayedCards([])
+                        setSelectRow(undefined)
+                        setSelectRowActive(false)
                         break
                     case PLAYED_CARD:
                         setPlayedCards(playedCards?.concat([[gameMessage.payload.player, undefined]]))
                         break
                     case REVEAL_ALL_CARDS:
                         setPlayedCards(gameMessage.payload.map(playedCard => [playedCard.player, playedCard.card]))
+                        break
+                    case SELECT_ROW:
+                        setSelectRow(gameMessage.payload)
+                        setSelectRowActive(true)
+                        break
+                    case UPDATED_ROWS:
+                        setGameState({
+                            ...gameStateRef.current!!,
+                            rows: gameMessage.payload,
+                        })
+                        setSelectRow(undefined)
+                        setSelectRowActive(false)
                         break
                     default:
                 }
@@ -70,7 +89,9 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
         <DndProvider backend={Backend}>
             <div className="level">
                 <div className="level-left">
-                    <Rows gameState={gameState} />
+                    <Rows gameState={gameState} selectRowActive={selectRowActive} selectRow={selectRow} selectedRow={(index) => {
+                        stompClient?.send(`/app/games/${gameId}/selectedRow`, {}, JSON.stringify(selectRowMessage(index)))
+                    }} />
                 </div>
                 <div className="level-right">
                     <PlayedCards playedCards={playedCards} players={players} />
@@ -79,7 +100,13 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
             <hr />
             <div className="card-hand">
                 {gameState?.playerState.deck.map((card, index) =>
-                    <SingleCard key={index} card={card} selected={selectedCard === card} setSelectedCard={setSelectedCard} />)}
+                    // FIXME can be selected?
+                    <SingleCard key={index}
+                        card={card}
+                        canBeSelected={playedCards.length < players.length}
+                        selected={selectedCard === card}
+                        setSelectedCard={setSelectedCard}
+                        canDrag={selectRowActive && selectedCard === card} />)}
             </div>
         </DndProvider>
     );

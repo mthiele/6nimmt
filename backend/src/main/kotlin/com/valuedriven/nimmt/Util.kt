@@ -5,5 +5,7 @@ object Util {
     fun randomString(length: Int) = (1..length)
             .map { kotlin.random.Random.nextInt(0, charPool.size) }
             .map(charPool::get)
-            .joinToString("");
+            .joinToString("")
+
+    fun <E> Iterable<E>.replace(old: E, new: E) = map { if (it == old) new else it }
 }

@@ -5,6 +5,9 @@
 }
 
 .card-placeholder {
+    border-style: dashed;
+    border-width: 0.1rem;
+    border-radius: 0.5rem;
     width: 5rem;
     height: 7rem;
     padding: 0.5rem;
@@ -16,15 +19,9 @@
 }
 
 .card-placeholder.can-drop {
-    border-style: dashed;
-    border-width: 0.1rem;
-    border-radius: 0.5rem;
     background-color: #e6ecff;
 }
 
 .card-placeholder.active {
-    border-style: dashed;
-    border-width: 0.1rem;
-    border-radius: 0.5rem;
     background-color: #ccd8ff;
 }

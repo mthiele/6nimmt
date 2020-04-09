@@ -1,6 +1,7 @@
 import React from "react"
 import { SingleCard } from "./Card"
 import { PlayerId, Card, Player } from "../model/Game"
+import { playCard } from "../model/Messages"
 
 export interface PlayedCardsProps {
     readonly playedCards: [PlayerId, Card | undefined][]

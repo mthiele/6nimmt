@@ -9,10 +9,11 @@ import { Card } from "../model/Game"
 
 export interface CardPlaceholderProps {
     readonly setSelectedCard: (card: Card) => void
+    readonly canDropCardHere: (card: Card) => boolean
 }
 
 export const CardPlaceholder = (props: CardPlaceholderProps) => {
-    const { setSelectedCard } = props;
+    const { setSelectedCard, canDropCardHere } = props;
 
     const [card, setCard] = useState(undefined as Card | undefined)
 
@@ -22,6 +23,7 @@ export const CardPlaceholder = (props: CardPlaceholderProps) => {
             setCard(item.card)
             setSelectedCard(item.card)
         },
+        canDrop: (item: any) => canDropCardHere(item.card),
         collect: (monitor) => ({
             isOver: monitor.isOver(),
             canDrop: monitor.canDrop(),

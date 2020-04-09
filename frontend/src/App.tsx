@@ -46,7 +46,7 @@ export const App = () => {
             <Router>
               <CreatePlayer path="/" stompClient={stompClient} setPlayer={setPlayer} reconnect={reconnect} />
               <GameLobby path="/gameLobby" stompClient={stompClient} thisPlayer={player} startedGame={setGameId} />
-              <SechsNimmt path="/game/:gameId" stompClient={stompClient} gameId={gameId} />
+              <SechsNimmt path="/game/:gameId" stompClient={stompClient} gameId={gameId} player={player}/>
             </Router>
           </StompContext.Provider>
         </div>

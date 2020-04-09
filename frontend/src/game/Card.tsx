@@ -9,20 +9,21 @@ import classnames from "classnames"
 export interface CardProps {
     readonly card: Card | undefined
     readonly revealed?: boolean
+    readonly canBeSelected?: boolean
     readonly selected?: boolean
     readonly canDrag?: boolean
     readonly setSelectedCard?: (card: Card) => void
 }
 
-export const SingleCard = (props: CardProps = { card: undefined, revealed: true, selected: false, canDrag: false }) => {
-    const { card, selected, canDrag, setSelectedCard } = props
+export const SingleCard = (props: CardProps = { card: undefined, revealed: true, canBeSelected: false, selected: false, canDrag: false }) => {
+    const { card, canBeSelected, selected, canDrag, setSelectedCard } = props
 
     const [, drag] = useDrag({
         item: { type: Constants.CARD, card: card },
     })
 
     const selectCard = () => {
-        if (setSelectedCard && card) {
+        if (canBeSelected && setSelectedCard && card) {
             setSelectedCard(card)
         }
     }
