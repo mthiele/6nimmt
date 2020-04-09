@@ -1,7 +1,7 @@
 import React, { useState } from "react"
 import { useDrag } from "react-dnd"
 import { Card } from "../model/Game"
-import "./Card.css"
+import "./Card.scss"
 import Constants from "./Constants"
 import classnames from "classnames"
 
@@ -33,9 +33,21 @@ export const SingleCard = (props: CardProps = { card: undefined, revealed: true,
             <div ref={canDrag ? drag : undefined} className={classnames("card", { selected, "can-be-selected": !!setSelectedCard })} onClick={selectCard} >
                 <div className="points">
                     {Array.from({ length: card.points }).map((ignore, index) =>
-                        <span key={index} className="point" />)}
+                        <span key={index} className={classnames("point", {
+                            "one-point": card.points === 1,
+                            "two-points": card.points === 2,
+                            "three-points": card.points === 3,
+                            "five-points": card.points === 5,
+                            "seven-points": card.points === 7
+                        })} />)}
                 </div>
-                <div className="value">
+                <div className={classnames("value", {
+                    "one-point": card.points === 1,
+                    "two-points": card.points === 2,
+                    "three-points": card.points === 3,
+                    "five-points": card.points === 5,
+                    "seven-points": card.points === 7
+                })}>
                     {card.value}
                 </div>
             </div >

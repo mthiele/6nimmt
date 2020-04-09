@@ -1,0 +1,88 @@
+.card-hand {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.card-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: left;
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-style: solid;
+    border-width: 0.1rem;
+    border-radius: 5%;
+    width: 5rem;
+    height: 7rem;
+    padding: 0.5rem;
+    margin: 1rem;
+    background-color: #fafafe;
+    
+    &.selected {
+        background-color: #faf5c7;
+    }
+
+    &.can-be-selected {
+        cursor: pointer;
+    }
+
+    .points {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+
+        .point {
+            mask-image: url("bull.svg");
+            mask-size: contain;
+            width: 1rem;
+            height: 1rem;
+            margin: 0.1rem;
+
+            &.one-point {
+                background-color: #a12ba1;
+            }
+            &.two-points {
+                background-color: #66a7ac;
+            }
+            &.three-points {
+                background-color: #fccd32;
+            }
+            &.five-points {
+                background-color: #da0c0c;
+            }
+            &.seven-points {
+                background-color: #da0c0c;
+            }
+        }
+    }
+
+    .value {
+        font-size: xx-large;
+        font-weight: bold;
+        text-align: center;
+
+        &.one-point {
+            color: #833d83;
+        }
+        &.two-points {
+            color: #158f8f;
+        }
+        &.three-points {
+            color: #e9b200;
+        }
+        &.five-points {
+            color: #ad0d0d;
+        }
+        &.seven-points {
+            color: #ad0d0d;
+        }
+    }
+}
