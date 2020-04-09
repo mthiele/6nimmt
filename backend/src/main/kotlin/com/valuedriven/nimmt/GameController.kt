@@ -142,20 +142,17 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
         val selectedRow = gameState.rows[rowNumber]
 
+        val rowToPlaceCard = rowToPlaceCard(gameState, playerState)
         val newGameState =
                 if (gameState.rows.all { row -> row.cards.last().value > playedCard.value }
-                        || rowToPlaceCard(gameState, playerState) == selectedRow) {
+                        || rowToPlaceCard == null
+                        || rowToPlaceCard == selectedRow) {
 
-                    val (newRow, newPlayerState) = if (selectedRow.cards.size == 5)
-                        Pair(Row(number = selectedRow.number, cards = listOf(playedCard)),
-                                playerState.copy(heap = playerState.heap.plus(selectedRow.cards),
-                                        deck = playerState.deck,
-                                        playedCard = null))
-                    else
-                        Pair(Row(number = selectedRow.number, cards = selectedRow.cards.plus(playedCard)),
-                                playerState.copy(heap = playerState.heap,
-                                        deck = playerState.deck,
-                                        playedCard = null))
+                    val (newRow, newPlayerState) = when {
+                        rowToPlaceCard == null -> takeRow(selectedRow, playedCard, playerState)
+                        selectedRow.cards.size == 5 -> takeRow(selectedRow, playedCard, playerState)
+                        else -> addCardToRow(selectedRow, playedCard, playerState)
+                    }
 
                     val newRoundNumber =
                             if (gameState.playerStates.minus(user.name).all { entry -> entry.value.playedCard == null })
@@ -175,19 +172,37 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
             updateRowsForAllPlayers(newGameState, gameId)
             nextPlayerShouldSelectRow(newGameState, gameId)
         } else {
-            gameState.playerStates.keys.forEach { player ->
-                simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId),
-                        StartRoundMessage(PrivateGameState(roundNumber = newGameState.roundNumber,
-                                playerState = getPlayerState(newGameState, player),
-                                rows = newGameState.rows)))
-            }
+            startNewRound(gameState, gameId, newGameState)
         }
 
     }
 
+    private fun takeRow(selectedRow: Row, playedCard: Card, playerState: PlayerState): Pair<Row, PlayerState> {
+        return Pair(Row(number = selectedRow.number, cards = listOf(playedCard)),
+                playerState.copy(heap = playerState.heap.plus(selectedRow.cards),
+                        deck = playerState.deck.minus(playedCard),
+                        playedCard = null))
+    }
+
+    private fun addCardToRow(selectedRow: Row, playedCard: Card, playerState: PlayerState): Pair<Row, PlayerState> {
+        return Pair(Row(number = selectedRow.number, cards = selectedRow.cards.plus(playedCard)),
+                playerState.copy(heap = playerState.heap,
+                        deck = playerState.deck.minus(playedCard),
+                        playedCard = null))
+    }
+
+    private fun startNewRound(gameState: GameState, gameId: UUID, newGameState: GameState) {
+        gameState.playerStates.keys.forEach { player ->
+            simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId),
+                    StartRoundMessage(PrivateGameState(roundNumber = newGameState.roundNumber,
+                            playerState = getPlayerState(newGameState, player),
+                            rows = newGameState.rows)))
+        }
+    }
+
     private fun userPlayedCard(playerState: PlayerState, playedCard: Card, gameState: GameState, user: Principal): GameState {
         val newPlayerState = playerState.copy(heap = playerState.heap,
-                deck = playerState.deck.minus(playedCard),
+                deck = playerState.deck,
                 playedCard = playedCard)
         return gameState.copy(roundNumber = gameState.roundNumber,
                 rows = gameState.rows,

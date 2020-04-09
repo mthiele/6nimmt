@@ -4,11 +4,11 @@ import { DndProvider } from "react-dnd"
 import Backend from "react-dnd-html5-backend"
 import { Client, Message } from "stompjs"
 import { Card, Player, PlayerId } from "../model/Game"
-import { GameState, MessageTypes, playCard, selectRowMessage, PLAYED_CARD, REVEAL_ALL_CARDS, SELECTED_ROW, SELECT_ROW, START_ROUND, UPDATED_ROWS } from "../model/Messages"
+import { GameState, MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, selectRowMessage, SELECT_ROW, START_ROUND, UPDATED_ROWS } from "../model/Messages"
+import { useRefState } from "../util"
 import { SingleCard } from "./Card"
 import { PlayedCards } from "./PlayedCards"
 import { Rows } from "./Rows"
-import { useRefState } from "../util"
 
 export interface SechsNimmtProps {
     readonly stompClient: Client | undefined
@@ -100,7 +100,6 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
             <hr />
             <div className="card-hand">
                 {gameState?.playerState.deck.map((card, index) =>
-                    // FIXME can be selected?
                     <SingleCard key={index}
                         card={card}
                         canBeSelected={playedCards.length < players.length}

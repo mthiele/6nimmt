@@ -13,6 +13,8 @@ export interface RowProps {
 export const Rows = (props: RowProps) => {
     const { gameState, selectRowActive, selectRow, selectedRow } = props;
 
+    const canDropHere = (rowIndex: number) => selectRow == undefined || selectRow === rowIndex
+
     return (
         <div className="columns">
             <div className="column">
@@ -20,9 +22,9 @@ export const Rows = (props: RowProps) => {
                     <div key={rowIndex} className="card-row">
                         {row.cards.map((card, cardIndex) =>
                             <SingleCard key={cardIndex} card={card} />)}
-                        {selectRowActive && <CardPlaceholder key={rowIndex} canDropCardHere={() => selectRow === rowIndex}
+                        {selectRowActive && <CardPlaceholder key={rowIndex} canDropCardHere={() => canDropHere(rowIndex)}
                             setSelectedCard={() => {
-                                if (selectRow === rowIndex) {
+                                if (canDropHere(rowIndex)) {
                                     selectedRow(rowIndex)
                                 }
                             }} />}
