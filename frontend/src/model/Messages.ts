@@ -8,6 +8,7 @@ export const REVEAL_ALL_CARDS = "revealAllPlayedCards"
 export const SELECT_ROW = "selectRow"
 export const SELECTED_ROW = "selectedRow"
 export const UPDATED_ROWS = "updatedRows"
+export const GAME_FINISHED = "gameFinished"
 
 export type MessageTypes =
     StartedGameMessage
@@ -18,6 +19,7 @@ export type MessageTypes =
     | SelectRowMessage
     | SelectedRowMessage
     | UpdatedRowsMessage
+    | GameFinishedMessage
 
 export interface StartedGameMessage {
     readonly messageType: typeof START_GAME
@@ -83,4 +85,15 @@ export const selectRowMessage = (row: number): SelectRowMessage => ({
 export interface UpdatedRowsMessage {
     readonly messageType: typeof UPDATED_ROWS
     readonly payload: Row[]
+}
+
+export interface EndGameState {
+    readonly roundNumber: number
+    readonly playerStates: {[name: string]: PlayerState}
+    readonly rows: Row[]
+}
+
+export interface GameFinishedMessage {
+    readonly messageType: typeof GAME_FINISHED
+    readonly payload: EndGameState
 }

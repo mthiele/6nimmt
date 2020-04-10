@@ -13,10 +13,18 @@ export interface CardProps {
     readonly selected?: boolean
     readonly canDrag?: boolean
     readonly setSelectedCard?: (card: Card) => void
+    readonly isPile?: boolean
 }
 
-export const SingleCard = (props: CardProps = { card: undefined, revealed: true, canBeSelected: false, selected: false, canDrag: false }) => {
-    const { card, canBeSelected, selected, canDrag, setSelectedCard } = props
+export const SingleCard = (props: CardProps = {
+    card: undefined,
+    revealed: true,
+    canBeSelected: false,
+    selected: false,
+    canDrag: false,
+    isPile: false
+}) => {
+    const { card, canBeSelected, selected, canDrag, setSelectedCard, isPile } = props
 
     const [, drag] = useDrag({
         item: { type: Constants.CARD, card: card },
@@ -30,7 +38,11 @@ export const SingleCard = (props: CardProps = { card: undefined, revealed: true,
 
     if (card) {
         return (
-            <div ref={canDrag ? drag : undefined} className={classnames("card", { selected, "can-be-selected": !!setSelectedCard })} onClick={selectCard} >
+            <div ref={canDrag ? drag : undefined} className={classnames("card", {
+                selected,
+                "can-be-selected": !!setSelectedCard,
+                "is-pile": isPile
+            })} onClick={selectCard} >
                 <div className="points">
                     {Array.from({ length: card.points }).map((ignore, index) =>
                         <span key={index} className={classnames("point", {

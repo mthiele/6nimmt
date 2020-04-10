@@ -40,7 +40,7 @@ export const CreatePlayer = (props: CreatePlayerProps & RouteComponentProps) => 
             </div>
             <div className="field">
                 <div className="control">
-                    <button type="submit" className="button is-primary" onClick={joinLobby}>Join Looby</button>
+                    <button type="submit" className="button is-primary" onClick={joinLobby}>Beitreten</button>
                 </div>
             </div>
         </div>

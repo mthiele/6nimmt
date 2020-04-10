@@ -172,7 +172,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
             updateRowsForAllPlayers(newGameState, gameId)
             nextPlayerShouldSelectRow(newGameState, gameId)
         } else {
-            startNewRound(gameState, gameId, newGameState)
+            startNewRound(newGameState, gameId)
         }
 
     }
@@ -191,12 +191,21 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
                         playedCard = null))
     }
 
-    private fun startNewRound(gameState: GameState, gameId: UUID, newGameState: GameState) {
-        gameState.playerStates.keys.forEach { player ->
-            simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId),
-                    StartRoundMessage(PrivateGameState(roundNumber = newGameState.roundNumber,
-                            playerState = getPlayerState(newGameState, player),
-                            rows = newGameState.rows)))
+    private fun startNewRound(gameState: GameState, gameId: UUID) {
+        if (gameState.roundNumber == 11) {
+            gameState.playerStates.keys.forEach { player ->
+                simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId), GameFinishedMessage(gameState))
+            }
+
+            games.remove(gameId)
+            gameStates.remove(gameId)
+        } else {
+            gameState.playerStates.keys.forEach { player ->
+                simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId),
+                        StartRoundMessage(PrivateGameState(roundNumber = gameState.roundNumber,
+                                playerState = getPlayerState(gameState, player),
+                                rows = gameState.rows)))
+            }
         }
     }
 

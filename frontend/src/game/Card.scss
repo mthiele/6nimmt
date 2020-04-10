@@ -13,6 +13,7 @@
 }
 
 .card {
+    font-family: 'Acme';
     display: flex;
     position: relative;
     flex-direction: column;
@@ -47,56 +48,66 @@
         cursor: pointer;
     }
 
-    .points {
-        display: flex;
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: center;
-
-        .point {
-            mask-image: url("bull.svg");
-            mask-size: contain;
-            width: 1rem;
-            height: 1rem;
-            margin: 0.1rem;
-
-            &.one-point {
-                background-color: #a12ba1;
-            }
-            &.two-points {
-                background-color: #66a7ac;
-            }
-            &.three-points {
-                background-color: #fccd32;
-            }
-            &.five-points {
-                background-color: #e62f2f;
-            }
-            &.seven-points {
-                background-color: #e62f2f;
-            }
-        }
+    &.is-pile:not(:first-child) {
+        margin-left: -4.5rem;
     }
 
     .value {
-        font-size: xx-large;
-        font-weight: bold;
-        text-align: center;
+        color: #ffffff
+    }
 
-        &.one-point {
-            color: #833d83;
+    &:not(.is-pile) {
+        .points {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+
+            .point {
+                mask-image: url("bull.svg");
+                mask-size: contain;
+                width: 1rem;
+                height: 1rem;
+                margin: 0.1rem;
+
+                &.one-point {
+                    background-color: #a12ba1;
+                }
+                &.two-points {
+                    background-color: #66a7ac;
+                }
+                &.three-points {
+                    background-color: #fccd32;
+                }
+                &.five-points {
+                    background-color: #e62f2f;
+                }
+                &.seven-points {
+                    background-color: #e62f2f;
+                }
+            }
         }
-        &.two-points {
-            color: #158f8f;
-        }
-        &.three-points {
-            color: #e9b200;
-        }
-        &.five-points {
-            color: #c00d0d;
-        }
-        &.seven-points {
-            color: #c00d0d;
+
+        .value {
+            font-size: xx-large;
+            font-weight: bold;
+            text-align: center;
+
+            &.one-point {
+                color: #833d83;
+            }
+            &.two-points {
+                color: #158f8f;
+            }
+            &.three-points {
+                color: #e9b200;
+            }
+            &.five-points {
+                color: #c00d0d;
+            }
+            &.seven-points {
+                color: #c00d0d;
+            }
         }
     }
 }
