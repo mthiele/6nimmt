@@ -29,18 +29,22 @@ export const CreatePlayer = (props: CreatePlayerProps & RouteComponentProps) => 
     }
 
     return (
-        <div className="section">
-            <div className="field">
-                <label className="label">Nutzername</label>
-                <div className="control">
-                    <input className="input"
-                        value={name}
-                        onInput={event => setName((event.target as any).value)} />
-                </div>
-            </div>
-            <div className="field">
-                <div className="control">
-                    <button type="submit" className="button is-primary" onClick={joinLobby}>Beitreten</button>
+        <div className="container is-vcentered">
+            <div className="column">
+                <div className="box">
+                    <div className="field">
+                        <label className="label">Nutzername</label>
+                        <div className="control">
+                            <input className="input"
+                                value={name}
+                                onInput={event => setName((event.target as any).value)} />
+                        </div>
+                    </div>
+                    <div className="field">
+                        <div className="control">
+                            <button type="submit" className="button is-primary" onClick={joinLobby}>Beitreten</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
