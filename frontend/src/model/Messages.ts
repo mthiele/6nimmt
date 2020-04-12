@@ -87,13 +87,18 @@ export interface UpdatedRowsMessage {
     readonly payload: Row[]
 }
 
+export interface EndRound {
+    readonly roundState: EndRoundState
+    readonly points: { [name: string]: number }
+}
+
 export interface EndRoundState {
     readonly roundNumber: number
-    readonly playerStates: {[name: string]: PlayerState}
+    readonly playerStates: { [name: string]: PlayerState }
     readonly rows: Row[]
 }
 
 export interface RoundFinishedMessage {
     readonly messageType: typeof ROUND_FINISHED
-    readonly payload: EndRoundState
+    readonly payload: EndRound
 }

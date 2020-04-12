@@ -1,24 +1,24 @@
 import React from "react"
-import { EndRoundState } from "../model/Messages"
 import { Player } from "../model/Game"
+import { EndRound } from "../model/Messages"
 
 export interface EndResultProps {
-    readonly endRoundState: EndRoundState
+    readonly endRound: EndRound
     readonly players: Player[]
 }
 
 export const EndResult = (props: EndResultProps) => {
-    const { endRoundState, players } = props
+    const { endRound, players } = props
 
     return (
         <div>
             <h3 className="is-size-3">Ergebnis</h3>
             <div className="level">
-                {Object.keys(endRoundState.playerStates).map(player =>
+                {Object.keys(endRound.roundState.playerStates).map(player =>
                     <div key={player} className="level-item has-text-centered">
                         <div>
                             <div className="has-text-weight-bold">{players.find(p => p.id === player)?.name || "unknown"}</div>
-                            {endRoundState.playerStates[player].heap.reduce((sum, currentCard) => sum + currentCard.points, 0)}
+                            {endRound.points[player]}
                         </div>
                     </div>
                 )}

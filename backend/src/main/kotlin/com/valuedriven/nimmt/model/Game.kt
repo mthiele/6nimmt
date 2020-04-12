@@ -7,5 +7,5 @@ data class Game(val id: UUID,
                 val creator: PlayerId,
                 val started: Boolean,
                 val activePlayers: List<PlayerId>,
-                val points: Map<PlayerId, Int>) {
+                val points: Map<PlayerId, List<Int>>) {
 }

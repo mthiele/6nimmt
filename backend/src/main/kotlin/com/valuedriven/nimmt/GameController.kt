@@ -35,7 +35,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         if (checkIfPlayerAlreadyHasGame(user.name)) return
 
         val gameId = UUID.randomUUID()
-        val newGame = Game(id = gameId, creator = user.name, activePlayers = listOf(user.name), points = mapOf(user.name to 0), started = false)
+        val newGame = Game(id = gameId, creator = user.name, activePlayers = listOf(user.name), points = mapOf(user.name to emptyList()), started = false)
         games[gameId] = newGame
         simpMessagingTemplate.convertAndSendToUser(user.name, "/queue/game", newGame)
         simpMessagingTemplate.convertAndSend("/topic/games", games.values)
@@ -61,7 +61,8 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
         val playerState = roundState.playerStates[user.name]
                 ?: throw IllegalArgumentException("Cannot find playerState for ${user.name}")
-        val privateGameState = PrivateRoundState(stepNumber = roundState.stepNumber,
+        val privateGameState = PrivateRoundState(
+                stepNumber = roundState.stepNumber,
                 playerState = playerState,
                 rows = roundState.rows)
 
@@ -72,7 +73,10 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     fun joinGame(user: Principal, game: Game) {
         if (checkIfPlayerAlreadyHasGame(user.name)) return
 
-        games[game.id] = game.copy(activePlayers = game.activePlayers.plus(user.name), points = game.points.plus(user.name to 0), started = false)
+        games[game.id] = game.copy(
+                activePlayers = game.activePlayers.plus(user.name),
+                points = game.points.plus(user.name to emptyList()),
+                started = false)
         simpMessagingTemplate.convertAndSend("/topic/games", games.values)
 
         playerJoinsGame(user, game.id)
@@ -192,12 +196,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
     private fun startNewStep(roundState: RoundState, gameId: UUID) {
         if (roundState.stepNumber == 11) {
-            roundState.playerStates.keys.forEach { player ->
-                simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId), RoundFinishedMessage(roundState))
-            }
-
-            roundStates.remove(gameId)
-            // FIXME check end game or start new round
+            endRound(gameId, roundState)
         } else {
             roundState.playerStates.keys.forEach { player ->
                 simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId),
@@ -206,6 +205,24 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
                                 rows = roundState.rows)))
             }
         }
+    }
+
+    private fun endRound(gameId: UUID, roundState: RoundState) {
+        val game = getGame(gameId)
+        val newPoints = game.points.map { (player, points) ->
+            val playerState = getPlayerState(roundState, player)
+            Pair(player, points.plus(playerState.heap.sumBy { it.getPoints() }))
+        }
+        game.activePlayers.forEach { player ->
+            simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId), RoundFinishedMessage(
+                    RoundFinished(roundState, newPoints.toMap()))
+            )
+        }
+
+        if (newPoints.any { (_, points) -> points.sum() >= 66 }) {
+            games.remove(gameId)
+        }
+        roundStates.remove(gameId)
     }
 
     private fun userPlayedCard(playerState: PlayerState, playedCard: Card, roundState: RoundState, user: Principal): RoundState {

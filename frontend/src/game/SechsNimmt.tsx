@@ -4,7 +4,7 @@ import { DndProvider } from "react-dnd"
 import Backend from "react-dnd-html5-backend"
 import { Client, Message } from "stompjs"
 import { Card, Player, PlayerId } from "../model/Game"
-import { EndRoundState, MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, RoundState, ROUND_FINISHED, selectRowMessage, SELECT_ROW, START_STEP, UPDATED_ROWS } from "../model/Messages"
+import { EndRoundState, MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, RoundState, ROUND_FINISHED, selectRowMessage, SELECT_ROW, START_STEP, UPDATED_ROWS, EndRound } from "../model/Messages"
 import { useRefState } from "../util"
 import { SingleCard } from "./Card"
 import { EndResult } from "./EndResult"
@@ -27,7 +27,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
     const [playedCards, setPlayedCards] = useState([] as [PlayerId, Card | undefined][])
     const [selectRow, setSelectRow] = useState(undefined as number | undefined)
     const [selectRowActive, setSelectRowActive] = useState(false)
-    const [endRoundState, setEndRoundState] = useState(undefined as EndRoundState | undefined)
+    const [endRound, setEndRound] = useState(undefined as EndRound | undefined)
 
     useEffect(() => {
         if (stompClient?.connected) {
@@ -67,10 +67,10 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                         break
                     case ROUND_FINISHED:
                         setRoundState({
-                            ...gameMessage.payload,
-                            playerState: gameMessage.payload.playerStates[player?.id!!]
+                            ...gameMessage.payload.roundState,
+                            playerState: gameMessage.payload.roundState.playerStates[player?.id!!]
                         })
-                        setEndRoundState({
+                        setEndRound({
                             ...gameMessage.payload,
                         })
                         setSelectRow(undefined)
@@ -108,8 +108,8 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                     }} />
                 </div>
                 <div className="level-right">
-                    {endRoundState
-                    ? <EndResult endRoundState={endRoundState} players={players}/>
+                    {endRound
+                    ? <EndResult endRound={endRound} players={players}/>
                     : <PlayedCards playedCards={playedCards} players={players} />
                     }
                 </div>
@@ -125,7 +125,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                         canDrag={selectRowActive && selectedCard === card} />)}
             </div>
             <hr />
-            <Heap cards={roundState?.playerState.heap || []} showCards={!!endRoundState || false}/>
+            <Heap cards={roundState?.playerState.heap || []} showCards={!!endRound || false}/>
         </DndProvider>
     );
 }

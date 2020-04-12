@@ -1,7 +1,7 @@
 package com.valuedriven.nimmt.messages
 
+import com.valuedriven.nimmt.PlayerId
 import com.valuedriven.nimmt.model.Card
-import com.valuedriven.nimmt.model.RoundState
 import com.valuedriven.nimmt.model.PrivateRoundState
 import com.valuedriven.nimmt.model.Row
 
@@ -14,4 +14,4 @@ class RevealAllPlayedCardsMessage(payload: List<PlayedCard>) : Message<List<Play
 class SelectRowMessage(payload: Int?) : Message<Int?>("selectRow", payload)
 class SelectedRowMessage(payload: Int) : Message<Int>("selectedRow", payload)
 class UpdatedRowsMessage(payload: List<Row>) : Message<List<Row>>("updatedRows", payload)
-class RoundFinishedMessage(payload: RoundState) : Message<RoundState>("roundFinished", payload)
+class RoundFinishedMessage(payload: RoundFinished) : Message<RoundFinished>("roundFinished", payload)
