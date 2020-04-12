@@ -67,12 +67,26 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
         val playerState = roundState.playerStates[user.name]
                 ?: throw IllegalArgumentException("Cannot find playerState for ${user.name}")
+        val revealAllCards = roundState.playerStates.all { (_, playerState) -> playerState.playedCard != null }
         val privateGameState = PrivateRoundState(
                 stepNumber = roundState.stepNumber,
                 playerState = playerState,
+                playedCards = roundState.playerStates.filter { (_, playerState) -> playerState.playedCard != null }
+                        .map { (playerId, playerState) -> Pair(playerId,
+                                if (revealAllCards || playerId == user.name)
+                                    playerState.playedCard
+                                else
+                                    null) }
+                        .toMap(),
                 rows = roundState.rows)
 
         simpMessagingTemplate.convertAndSendToUser(user.name, "${activeGame(gameId)}/roundState", privateGameState)
+
+        if (playerState.deck.isEmpty()) {
+            val game = getGame(gameId)
+            simpMessagingTemplate.convertAndSendToUser(user.name, activeGame(gameId), RoundFinishedMessage(
+                    RoundFinished(roundState, game.points, game.points.any { it.value.sum() >= 66 })))
+        }
     }
 
     @MessageMapping("/joinGame")
@@ -176,6 +190,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
                 StartStepMessage(payload = PrivateRoundState(
                         stepNumber = roundState.stepNumber,
                         playerState = getPlayerState(roundState, user.name),
+                        playedCards = mapOf(),
                         rows = roundState.rows)))
     }
 
@@ -227,6 +242,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
                 simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId),
                         StartStepMessage(PrivateRoundState(stepNumber = roundState.stepNumber,
                                 playerState = getPlayerState(roundState, player),
+                                playedCards = mapOf(),
                                 rows = roundState.rows)))
             }
         }
@@ -267,7 +283,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
     private fun sendRevealAllPlayedCards(game: Game, roundState: RoundState) {
         game.activePlayers.forEach { player ->
-            val allPlayedCards = roundState.playerStates.map { playerState -> PlayedCard(playerState.key, playerState.value.playedCard!!) }
+            val allPlayedCards = roundState.playerStates.map { (playerId, playerState) -> PlayedCard(playerId, playerState.playedCard!!) }
             simpMessagingTemplate.convertAndSendToUser(player, activeGame(game.id),
                     RevealAllPlayedCardsMessage(payload = allPlayedCards))
         }

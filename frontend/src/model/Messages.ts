@@ -33,6 +33,7 @@ export interface StartStepMessage {
 export interface RoundState {
     readonly roundNumber: number
     readonly playerState: PlayerState
+    readonly playedCards: { [name: string]: Card | undefined}
     readonly rows: Row[]
 }
 

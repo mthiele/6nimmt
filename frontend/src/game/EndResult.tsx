@@ -20,7 +20,6 @@ export const EndResult = (props: EndResultProps) => {
 
     return endRound && (
         <div>
-            <h3 className="is-size-3">Ergebnis</h3>
             <table className="table">
                 <thead>
                     <tr>

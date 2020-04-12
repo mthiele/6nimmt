@@ -4,12 +4,12 @@ import { DndProvider } from "react-dnd"
 import Backend from "react-dnd-html5-backend"
 import { Client, Message } from "stompjs"
 import { Card, Player, PlayerId } from "../model/Game"
-import { EndRound, MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, RoundState, ROUND_FINISHED, selectRowMessage, SELECT_ROW, START_STEP, UPDATED_ROWS } from "../model/Messages"
+import { EndRound, MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, RoundState, ROUND_FINISHED, selectRowMessage, SELECT_ROW, START_STEP, UPDATED_ROWS, PlayedCard } from "../model/Messages"
 import { useRefState } from "../util"
 import { SingleCard } from "./Card"
 import { EndResult } from "./EndResult"
 import { Heap } from "./Heap"
-import { PlayedCards } from "./PlayedCards"
+import { PlayedCards, PlayedCardsProps } from "./PlayedCards"
 import { Rows } from "./Rows"
 
 export interface SechsNimmtProps {
@@ -18,13 +18,15 @@ export interface SechsNimmtProps {
     readonly player: Player | undefined
 }
 
+type PlayedCards = [PlayerId, Card | undefined][]
+
 export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
     const { stompClient, gameId, player } = props
 
     const [players, setPlayers] = useState([] as Player[])
     const [roundState, roundStateRef, setRoundState] = useRefState(undefined as RoundState | undefined)
     const [selectedCard, setSelectedCard] = useState(undefined as Card | undefined)
-    const [playedCards, setPlayedCards] = useState([] as [PlayerId, Card | undefined][])
+    const [playedCards, setPlayedCards] = useState([] as PlayedCards)
     const [selectRow, setSelectRow] = useState(undefined as number | undefined)
     const [selectRowActive, setSelectRowActive] = useState(false)
     const [endRound, setEndRound] = useState(undefined as EndRound | undefined)
@@ -32,9 +34,19 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
     useEffect(() => {
         if (stompClient?.connected) {
             if (roundState === undefined) {
-                // FIXME when round is finished, endRoundState should be sent
                 const subscription = stompClient?.subscribe(`/user/queue/activeGames/${gameId}/roundState`, (message: Message) => {
-                    setRoundState(JSON.parse(message.body))
+                    const newRoundState = JSON.parse(message.body) as RoundState
+                    setRoundState(newRoundState)
+                    
+                    const newPlayedCards: PlayedCards = Object.keys(newRoundState.playedCards)
+                        .map((v, i) => [v, Object.values(newRoundState.playedCards)[i]])
+                    setPlayedCards(newPlayedCards)
+                    
+                    const thisPlayersCard = newPlayedCards.find(cards => cards[0] === player?.id)
+                    if (thisPlayersCard) {
+                        setSelectedCard(thisPlayersCard[1])
+                    }
+
                     subscription?.unsubscribe()
                 })
                 stompClient?.send(`/app/roundState/${gameId}`, {}, "")
@@ -70,7 +82,8 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                     case ROUND_FINISHED:
                         setRoundState({
                             ...gameMessage.payload.roundState,
-                            playerState: gameMessage.payload.roundState.playerStates[player?.id!!]
+                            playerState: gameMessage.payload.roundState.playerStates[player?.id!!],
+                            playedCards: {},
                         })
                         setEndRound({
                             ...gameMessage.payload,
@@ -115,20 +128,21 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
             </div>
             <hr />
             <div className="card-hand">
-                {roundState?.playerState.deck.map((card, index) =>
+                {roundState?.playerState.deck.map((card, index) => 
                     <SingleCard key={index}
                         card={card}
                         canBeSelected={playedCards.length < players.length}
-                        selected={selectedCard === card}
+                        selected={JSON.stringify(selectedCard) === JSON.stringify(card)}
                         setSelectedCard={setSelectedCard}
-                        canDrag={selectRowActive && selectedCard === card} />)}
+                        canDrag={selectRowActive && JSON.stringify(selectedCard) === JSON.stringify(card)} />
+                )}
             </div>
             <hr />
             <Heap cards={roundState?.playerState.heap || []} showCards={!!endRound || false} />
             {endRound &&
                 <div>
                     <hr />
-                    <EndResult endRound={endRound} players={players} stompClient={stompClient} gameId={gameId}/>
+                    <EndResult endRound={endRound} players={players} stompClient={stompClient} gameId={gameId} />
                 </div>
             }
         </DndProvider>
