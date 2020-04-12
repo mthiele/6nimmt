@@ -1,6 +1,5 @@
 package com.valuedriven.nimmt.messages
 
-import com.valuedriven.nimmt.PlayerId
 import com.valuedriven.nimmt.model.Card
 import com.valuedriven.nimmt.model.PrivateRoundState
 import com.valuedriven.nimmt.model.Row

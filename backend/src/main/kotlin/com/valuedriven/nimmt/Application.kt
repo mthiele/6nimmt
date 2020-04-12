@@ -28,6 +28,7 @@ import java.util.*
 
 
 typealias PlayerId = String
+typealias GameId = String
 
 @SpringBootApplication
 class Application
