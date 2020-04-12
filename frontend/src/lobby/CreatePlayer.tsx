@@ -29,7 +29,7 @@ export const CreatePlayer = (props: CreatePlayerProps & RouteComponentProps) => 
     }
 
     return (
-        <div>
+        <div className="section">
             <div className="field">
                 <label className="label">Nutzername</label>
                 <div className="control">

@@ -47,6 +47,18 @@ export const App = () => {
   return (
     <div className="Site">
       <div className="Site-content">
+        <nav className="navbar is-light" role="navigation" aria-label="main navigation">
+          <div className="navbar-brand">
+            <div className="navbar-item">
+              <strong className="is-size-4 acme">6nimmt!</strong>
+            </div>
+          </div>
+          <div className="navbar-end">
+            <div className="navbar-item">
+              <a>Logout</a>
+            </div>
+          </div>
+        </nav>
         <div className="container">
           <StompContext.Provider value={stompClient}>
             <Router>
