@@ -4,6 +4,7 @@ export interface Game {
     readonly id: string;
     readonly creator: string;
     readonly activePlayers: PlayerId[];
+    readonly points: {[name: string]: Number};
     readonly started: boolean;
 }
 

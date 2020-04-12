@@ -18,7 +18,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     // FIXME concurrency?
     private val games = mutableMapOf<UUID, Game>()
     private val players = mutableMapOf<PlayerId, Player>()
-    private val gameStates = mutableMapOf<UUID, GameState>()
+    private val roundStates = mutableMapOf<UUID, RoundState>()
 
     @MessageMapping("/createPlayer")
     fun createPlayer(playerName: String, user: Principal) {
@@ -35,7 +35,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         if (checkIfPlayerAlreadyHasGame(user.name)) return
 
         val gameId = UUID.randomUUID()
-        val newGame = Game(id = gameId, creator = user.name, activePlayers = listOf(user.name), started = false)
+        val newGame = Game(id = gameId, creator = user.name, activePlayers = listOf(user.name), points = mapOf(user.name to 0), started = false)
         games[gameId] = newGame
         simpMessagingTemplate.convertAndSendToUser(user.name, "/queue/game", newGame)
         simpMessagingTemplate.convertAndSend("/topic/games", games.values)
@@ -55,15 +55,15 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         return players.values.toList()
     }
 
-    @MessageMapping("/gameState/{gameId}")
-    fun getGameState(user: Principal, @DestinationVariable gameId: UUID) {
-        val gameState = getGameState(gameId)
+    @MessageMapping("/roundState/{gameId}")
+    fun getRoundState(user: Principal, @DestinationVariable gameId: UUID) {
+        val roundState = getRoundState(gameId)
 
-        val playerState = gameState.playerStates[user.name]
+        val playerState = roundState.playerStates[user.name]
                 ?: throw IllegalArgumentException("Cannot find playerState for ${user.name}")
-        val privateGameState = PrivateGameState(roundNumber = gameState.roundNumber,
+        val privateGameState = PrivateRoundState(stepNumber = roundState.stepNumber,
                 playerState = playerState,
-                rows = gameState.rows)
+                rows = roundState.rows)
 
         simpMessagingTemplate.convertAndSendToUser(user.name, "${activeGame(gameId)}/gameState", privateGameState)
     }
@@ -72,7 +72,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     fun joinGame(user: Principal, game: Game) {
         if (checkIfPlayerAlreadyHasGame(user.name)) return
 
-        games[game.id] = game.copy(id = game.id, activePlayers = game.activePlayers.plus(user.name), started = false)
+        games[game.id] = game.copy(activePlayers = game.activePlayers.plus(user.name), points = game.points.plus(user.name to 0), started = false)
         simpMessagingTemplate.convertAndSend("/topic/games", games.values)
 
         playerJoinsGame(user, game.id)
@@ -90,15 +90,15 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
                 .map { value -> Card(value) }
                 .toMutableList()
 
-        val playerStates = game.activePlayers
+        val playerStates = game.points
                 .map { PlayerState(heap = emptyList(), deck = deal10Cards(cards, random), playedCard = null) }
 
         val rows = (0..3)
                 .map { Row(number = it, cards = assign1Card(cards, random)) }
 
-        gameStates[game.id] = GameState(roundNumber = 1, playerStates = game.activePlayers.zip(playerStates).toMap(), rows = rows)
+        roundStates[game.id] = RoundState(stepNumber = 1, playerStates = game.activePlayers.zip(playerStates).toMap(), rows = rows)
 
-        games[game.id] = game.copy(id = game.id, creator = game.creator, activePlayers = game.activePlayers, started = true)
+        games[game.id] = game.copy(started = true)
         simpMessagingTemplate.convertAndSend("/topic/games", games.values)
 
         game.activePlayers.forEach { player ->
@@ -108,7 +108,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         Thread.sleep(500) // FIXME give the client time to create the game
         game.activePlayers.forEachIndexed { index, player ->
             simpMessagingTemplate.convertAndSendToUser(player, activeGame(game.id),
-                    StartRoundMessage(payload = PrivateGameState(roundNumber = 1, playerState = playerStates[index], rows = rows)))
+                    StartStepMessage(payload = PrivateRoundState(stepNumber = 1, playerState = playerStates[index], rows = rows)))
         }
     }
 
@@ -116,16 +116,16 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     fun playCard(user: Principal, @DestinationVariable gameId: UUID, message: PlayCardMessage) {
 
         val playedCard = message.payload ?: throw IllegalArgumentException("Played card cannot be null")
-        val gameState = getGameState(gameId)
-        val playerState = getPlayerState(gameState, user.name)
+        val roundState = getRoundState(gameId)
+        val playerState = getPlayerState(roundState, user.name)
         val game = getGame(gameId)
 
-        val newGameState = userPlayedCard(playerState, playedCard, gameState, user)
-        gameStates[gameId] = newGameState
+        val newRoundState = userPlayedCard(playerState, playedCard, roundState, user)
+        roundStates[gameId] = newRoundState
 
-        if (checkWhetherPlayerHasPlayedLastMissingCardThisRound(newGameState)) {
-            sendRevealAllPlayedCards(game, newGameState)
-            nextPlayerShouldSelectRow(newGameState, gameId)
+        if (checkWhetherPlayerHasPlayedLastMissingCardThisStep(newRoundState)) {
+            sendRevealAllPlayedCards(game, newRoundState)
+            nextPlayerShouldSelectRow(newRoundState, gameId)
         } else {
             sendUserPlayedCard(game, user)
         }
@@ -135,16 +135,16 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     fun rowSelection(user: Principal, @DestinationVariable gameId: UUID, message: SelectedRowMessage) {
         val rowNumber = message.payload
                 ?: throw IllegalArgumentException("Given row cannot be empty")
-        val gameState = getGameState(gameId)
-        val playerState = getPlayerState(gameState, user.name)
+        val roundState = getRoundState(gameId)
+        val playerState = getPlayerState(roundState, user.name)
         val playedCard = playerState.playedCard
                 ?: throw IllegalStateException("Player ${user.name} already placed their card.")
 
-        val selectedRow = gameState.rows[rowNumber]
+        val selectedRow = roundState.rows[rowNumber]
 
-        val rowToPlaceCard = rowToPlaceCard(gameState, playerState)
-        val newGameState =
-                if (gameState.rows.all { row -> row.cards.last().value > playedCard.value }
+        val rowToPlaceCard = rowToPlaceCard(roundState, playerState)
+        val newRoundState =
+                if (roundState.rows.all { row -> row.cards.last().value > playedCard.value }
                         || rowToPlaceCard == null
                         || rowToPlaceCard == selectedRow) {
 
@@ -154,25 +154,25 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
                         else -> addCardToRow(selectedRow, playedCard, playerState)
                     }
 
-                    val newRoundNumber =
-                            if (gameState.playerStates.minus(user.name).all { entry -> entry.value.playedCard == null })
-                                gameState.roundNumber + 1
+                    val newStepNumber =
+                            if (roundState.playerStates.minus(user.name).all { entry -> entry.value.playedCard == null })
+                                roundState.stepNumber + 1
                             else
-                                gameState.roundNumber
-                    gameState.copy(roundNumber = newRoundNumber,
-                            rows = gameState.rows.replace(selectedRow, newRow),
-                            playerStates = gameState.playerStates.minus(user.name).plus(Pair(user.name, newPlayerState)))
+                                roundState.stepNumber
+                    roundState.copy(stepNumber = newStepNumber,
+                            rows = roundState.rows.replace(selectedRow, newRow),
+                            playerStates = roundState.playerStates.minus(user.name).plus(Pair(user.name, newPlayerState)))
                 } else {
                     throw IllegalStateException("Card ${playedCard.value} is placed in the wrong row ($rowNumber)")
                 }
 
-        gameStates[gameId] = newGameState
+        roundStates[gameId] = newRoundState
 
-        if (newGameState.roundNumber == gameState.roundNumber) {
-            updateRowsForAllPlayers(newGameState, gameId)
-            nextPlayerShouldSelectRow(newGameState, gameId)
+        if (newRoundState.stepNumber == roundState.stepNumber) {
+            updateRowsForAllPlayers(newRoundState, gameId)
+            nextPlayerShouldSelectRow(newRoundState, gameId)
         } else {
-            startNewRound(newGameState, gameId)
+            startNewStep(newRoundState, gameId)
         }
 
     }
@@ -186,36 +186,31 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
     private fun addCardToRow(selectedRow: Row, playedCard: Card, playerState: PlayerState): Pair<Row, PlayerState> {
         return Pair(Row(number = selectedRow.number, cards = selectedRow.cards.plus(playedCard)),
-                playerState.copy(heap = playerState.heap,
-                        deck = playerState.deck.minus(playedCard),
+                playerState.copy(deck = playerState.deck.minus(playedCard),
                         playedCard = null))
     }
 
-    private fun startNewRound(gameState: GameState, gameId: UUID) {
-        if (gameState.roundNumber == 11) {
-            gameState.playerStates.keys.forEach { player ->
-                simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId), GameFinishedMessage(gameState))
+    private fun startNewStep(roundState: RoundState, gameId: UUID) {
+        if (roundState.stepNumber == 11) {
+            roundState.playerStates.keys.forEach { player ->
+                simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId), RoundFinishedMessage(roundState))
             }
 
-            games.remove(gameId)
-            gameStates.remove(gameId)
+            roundStates.remove(gameId)
+            // FIXME check end game or start new round
         } else {
-            gameState.playerStates.keys.forEach { player ->
+            roundState.playerStates.keys.forEach { player ->
                 simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId),
-                        StartRoundMessage(PrivateGameState(roundNumber = gameState.roundNumber,
-                                playerState = getPlayerState(gameState, player),
-                                rows = gameState.rows)))
+                        StartStepMessage(PrivateRoundState(stepNumber = roundState.stepNumber,
+                                playerState = getPlayerState(roundState, player),
+                                rows = roundState.rows)))
             }
         }
     }
 
-    private fun userPlayedCard(playerState: PlayerState, playedCard: Card, gameState: GameState, user: Principal): GameState {
-        val newPlayerState = playerState.copy(heap = playerState.heap,
-                deck = playerState.deck,
-                playedCard = playedCard)
-        return gameState.copy(roundNumber = gameState.roundNumber,
-                rows = gameState.rows,
-                playerStates = gameState.playerStates.minus(user.name).plus(Pair(user.name, newPlayerState)))
+    private fun userPlayedCard(playerState: PlayerState, playedCard: Card, roundState: RoundState, user: Principal): RoundState {
+        val newPlayerState = playerState.copy(playedCard = playedCard)
+        return roundState.copy(playerStates = roundState.playerStates.minus(user.name).plus(Pair(user.name, newPlayerState)))
     }
 
     private fun sendUserPlayedCard(game: Game, user: Principal) {
@@ -225,17 +220,17 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         }
     }
 
-    private fun sendRevealAllPlayedCards(game: Game, gameState: GameState) {
+    private fun sendRevealAllPlayedCards(game: Game, roundState: RoundState) {
         game.activePlayers.forEach { player ->
-            val allPlayedCards = gameState.playerStates.map { playerState -> PlayedCard(playerState.key, playerState.value.playedCard!!) }
+            val allPlayedCards = roundState.playerStates.map { playerState -> PlayedCard(playerState.key, playerState.value.playedCard!!) }
             simpMessagingTemplate.convertAndSendToUser(player, activeGame(game.id),
                     RevealAllPlayedCardsMessage(payload = allPlayedCards))
         }
     }
 
-    private fun updateRowsForAllPlayers(gameState: GameState, gameId: UUID) {
-        gameState.playerStates.keys.forEach { player ->
-            simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId), UpdatedRowsMessage(gameState.rows))
+    private fun updateRowsForAllPlayers(roundState: RoundState, gameId: UUID) {
+        roundState.playerStates.keys.forEach { player ->
+            simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId), UpdatedRowsMessage(roundState.rows))
         }
     }
 
@@ -243,7 +238,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
     private fun playerJoinsGame(user: Principal, gameId: UUID?) {
         players[user.name]?.let { player ->
-            players.replace(user.name, player.copy(name = player.name, id = player.id, inGame = gameId))
+            players.replace(user.name, player.copy(inGame = gameId))
             simpMessagingTemplate.convertAndSend("/topic/players", players.values)
         }
     }
@@ -258,32 +253,32 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         return games.values.any { it.activePlayers.contains(player) || it.creator == player }
     }
 
-    private fun checkWhetherPlayerHasPlayedLastMissingCardThisRound(gameState: GameState): Boolean {
-        return gameState.playerStates.values.none { playerState ->
+    private fun checkWhetherPlayerHasPlayedLastMissingCardThisStep(roundState: RoundState): Boolean {
+        return roundState.playerStates.values.none { playerState ->
             playerState.playedCard === null
         }
     }
 
-    private fun nextPlayerShouldSelectRow(gameState: GameState, gameId: UUID) {
-        gameState.playerStates.minBy {
+    private fun nextPlayerShouldSelectRow(roundState: RoundState, gameId: UUID) {
+        roundState.playerStates.minBy {
             it.value.playedCard?.value ?: Int.MAX_VALUE
         }?.let { (playerId, nextPlayer) ->
-            val selectRow = rowToPlaceCard(gameState, nextPlayer)
+            val selectRow = rowToPlaceCard(roundState, nextPlayer)
             simpMessagingTemplate.convertAndSendToUser(playerId, activeGame(gameId), SelectRowMessage(selectRow?.number))
         }
     }
 
-    private fun rowToPlaceCard(gameState: GameState, playerState: PlayerState) =
-            gameState.rows.filter { row -> (playerState.playedCard?.value ?: 0) - row.cards.last().value > 0 }
+    private fun rowToPlaceCard(roundState: RoundState, playerState: PlayerState) =
+            roundState.rows.filter { row -> (playerState.playedCard?.value ?: 0) - row.cards.last().value > 0 }
                     .minBy { row -> (playerState.playedCard?.value ?: 0) - row.cards.last().value }
 
     private fun getGame(gameId: UUID) =
             games[gameId] ?: throw IllegalArgumentException("Cannot find game with id $gameId")
 
-    private fun getGameState(gameId: UUID) = (gameStates[gameId]
-            ?: throw IllegalArgumentException("Cannot find gameState for game with id $gameId"))
+    private fun getRoundState(gameId: UUID) = (roundStates[gameId]
+            ?: throw IllegalArgumentException("Cannot find round state for game with id $gameId"))
 
-    private fun getPlayerState(gameState: GameState, playerId: PlayerId) =
-            (gameState.playerStates[playerId]
+    private fun getPlayerState(roundState: RoundState, playerId: PlayerId) =
+            (roundState.playerStates[playerId]
                     ?: throw IllegalArgumentException("Cannot find player state for player $playerId"))
 }

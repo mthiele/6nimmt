@@ -1,36 +1,36 @@
 import { Card, PlayerState, Row, PlayerId } from "./Game"
 
 export const START_GAME = "startGame"
-export const START_ROUND = "startRound"
+export const START_STEP = "startStep"
 export const PLAY_CARD = "playCard"
 export const PLAYED_CARD = "playedCard"
 export const REVEAL_ALL_CARDS = "revealAllPlayedCards"
 export const SELECT_ROW = "selectRow"
 export const SELECTED_ROW = "selectedRow"
 export const UPDATED_ROWS = "updatedRows"
-export const GAME_FINISHED = "gameFinished"
+export const ROUND_FINISHED = "roundFinished"
 
 export type MessageTypes =
     StartedGameMessage
-    | StartRoundMessage
+    | StartStepMessage
     | PlayCardMessage
     | PlayedCardMessage
     | RevealAllCardsMessage
     | SelectRowMessage
     | SelectedRowMessage
     | UpdatedRowsMessage
-    | GameFinishedMessage
+    | RoundFinishedMessage
 
 export interface StartedGameMessage {
     readonly messageType: typeof START_GAME
 }
 
-export interface StartRoundMessage {
-    readonly messageType: typeof START_ROUND
-    readonly payload: GameState
+export interface StartStepMessage {
+    readonly messageType: typeof START_STEP
+    readonly payload: RoundState
 }
 
-export interface GameState {
+export interface RoundState {
     readonly roundNumber: number
     readonly playerState: PlayerState
     readonly rows: Row[]
@@ -87,13 +87,13 @@ export interface UpdatedRowsMessage {
     readonly payload: Row[]
 }
 
-export interface EndGameState {
+export interface EndRoundState {
     readonly roundNumber: number
     readonly playerStates: {[name: string]: PlayerState}
     readonly rows: Row[]
 }
 
-export interface GameFinishedMessage {
-    readonly messageType: typeof GAME_FINISHED
-    readonly payload: EndGameState
+export interface RoundFinishedMessage {
+    readonly messageType: typeof ROUND_FINISHED
+    readonly payload: EndRoundState
 }

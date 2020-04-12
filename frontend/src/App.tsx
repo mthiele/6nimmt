@@ -30,7 +30,7 @@ export const App = () => {
   }, [])
 
   const reconnect = (onConnect: (stomp: Client) => void = () => { }) => {
-    const socket = new WebSocket("ws://localhost:8080/gs-guide-websocket")
+    const socket = new WebSocket("ws://192.168.2.100:8080/gs-guide-websocket")
     const stomp = Stomp.over(socket)
     stomp.connect({ token: sessionStorage.getItem(STORAGE_USER) || "" }, (frame: any) => {
       setStompClient(stomp)
