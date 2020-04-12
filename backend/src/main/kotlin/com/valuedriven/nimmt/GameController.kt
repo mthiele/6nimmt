@@ -88,32 +88,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
             throw RuntimeException("Cannot start a game if not creator")
         }
 
-        val random = Random()
-
-        val cards = (1..104)
-                .map { value -> Card(value) }
-                .toMutableList()
-
-        val playerStates = game.points
-                .map { PlayerState(heap = emptyList(), deck = deal10Cards(cards, random), playedCard = null) }
-
-        val rows = (0..3)
-                .map { Row(number = it, cards = assign1Card(cards, random)) }
-
-        roundStates[game.id] = RoundState(stepNumber = 1, playerStates = game.activePlayers.zip(playerStates).toMap(), rows = rows)
-
-        games[game.id] = game.copy(started = true)
-        simpMessagingTemplate.convertAndSend("/topic/games", games.values)
-
-        game.activePlayers.forEach { player ->
-            simpMessagingTemplate.convertAndSendToUser(player, activeGame(game.id), StartGameMessage())
-        }
-
-        Thread.sleep(500) // FIXME give the client time to create the game
-        game.activePlayers.forEachIndexed { index, player ->
-            simpMessagingTemplate.convertAndSendToUser(player, activeGame(game.id),
-                    StartStepMessage(payload = PrivateRoundState(stepNumber = 1, playerState = playerStates[index], rows = rows)))
-        }
+        initNewRound(game)
     }
 
     @MessageMapping("/games/{gameId}/playCard")
@@ -178,7 +153,50 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         } else {
             startNewStep(newRoundState, gameId)
         }
+    }
 
+    @MessageMapping("/games/{gameId}/startNewRound")
+    fun startNewRound(user: Principal, @DestinationVariable gameId: UUID) {
+        // FIXME transactional?
+        val game = getGame(gameId)
+
+        if (getRoundState(gameId).stepNumber == 11) {
+            initNewRound(game)
+        }
+
+        val roundState = getRoundState(gameId)
+        simpMessagingTemplate.convertAndSendToUser(user.name, activeGame(game.id),
+                StartStepMessage(payload = PrivateRoundState(
+                        stepNumber = roundState.stepNumber,
+                        playerState = getPlayerState(roundState, user.name),
+                        rows = roundState.rows)))
+    }
+
+
+    private fun initNewRound(game: Game) {
+        val random = Random()
+
+        val cards = (1..104)
+                .map { value -> Card(value) }
+                .toMutableList()
+
+        val playerStates = game.points
+                .map { PlayerState(heap = emptyList(), deck = deal10Cards(cards, random), playedCard = null) }
+
+        val rows = (0..3)
+                .map { Row(number = it, cards = assign1Card(cards, random)) }
+
+        roundStates[game.id] = RoundState(stepNumber = 1, playerStates = game.activePlayers.zip(playerStates).toMap(), rows = rows)
+
+        games[game.id] = game.copy(started = true)
+
+        if (!game.started) {
+            simpMessagingTemplate.convertAndSend("/topic/games", games.values)
+
+            game.activePlayers.forEach { player ->
+                simpMessagingTemplate.convertAndSendToUser(player, activeGame(game.id), StartGameMessage())
+            }
+        }
     }
 
     private fun takeRow(selectedRow: Row, playedCard: Card, playerState: PlayerState): Pair<Row, PlayerState> {
@@ -212,17 +230,20 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         val newPoints = game.points.map { (player, points) ->
             val playerState = getPlayerState(roundState, player)
             Pair(player, points.plus(playerState.heap.sumBy { it.getPoints() }))
-        }
-        game.activePlayers.forEach { player ->
-            simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId), RoundFinishedMessage(
-                    RoundFinished(roundState, newPoints.toMap()))
-            )
+        }.toMap()
+
+        val isGameFinished = newPoints.any { (_, points) -> points.sum() >= 66 }
+
+        if (isGameFinished) {
+            games.remove(gameId)
+        } else {
+            games[gameId] = game.copy(points = newPoints)
         }
 
-        if (newPoints.any { (_, points) -> points.sum() >= 66 }) {
-            games.remove(gameId)
+        game.activePlayers.forEach { player ->
+            simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId), RoundFinishedMessage(
+                    RoundFinished(roundState, newPoints, isGameFinished)))
         }
-        roundStates.remove(gameId)
     }
 
     private fun userPlayedCard(playerState: PlayerState, playedCard: Card, roundState: RoundState, user: Principal): RoundState {

@@ -4,7 +4,7 @@ import { DndProvider } from "react-dnd"
 import Backend from "react-dnd-html5-backend"
 import { Client, Message } from "stompjs"
 import { Card, Player, PlayerId } from "../model/Game"
-import { EndRoundState, MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, RoundState, ROUND_FINISHED, selectRowMessage, SELECT_ROW, START_STEP, UPDATED_ROWS, EndRound } from "../model/Messages"
+import { EndRound, MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, RoundState, ROUND_FINISHED, selectRowMessage, SELECT_ROW, START_STEP, UPDATED_ROWS } from "../model/Messages"
 import { useRefState } from "../util"
 import { SingleCard } from "./Card"
 import { EndResult } from "./EndResult"
@@ -32,6 +32,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
     useEffect(() => {
         if (stompClient?.connected) {
             if (roundState === undefined) {
+                // FIXME when round is finished, endRoundState should be sent
                 const subscription = stompClient?.subscribe(`/user/queue/activeGames/${gameId}/roundState`, (message: Message) => {
                     setRoundState(JSON.parse(message.body))
                     subscription?.unsubscribe()
@@ -42,6 +43,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                 const gameMessage = JSON.parse(message.body) as MessageTypes;
                 switch (gameMessage.messageType) {
                     case START_STEP:
+                        setEndRound(undefined)
                         setRoundState(gameMessage.payload)
                         setPlayedCards([])
                         setSelectRow(undefined)
@@ -108,10 +110,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                     }} />
                 </div>
                 <div className="level-right">
-                    {endRound
-                    ? <EndResult endRound={endRound} players={players}/>
-                    : <PlayedCards playedCards={playedCards} players={players} />
-                    }
+                    <PlayedCards playedCards={playedCards} players={players} />
                 </div>
             </div>
             <hr />
@@ -125,7 +124,13 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                         canDrag={selectRowActive && selectedCard === card} />)}
             </div>
             <hr />
-            <Heap cards={roundState?.playerState.heap || []} showCards={!!endRound || false}/>
+            <Heap cards={roundState?.playerState.heap || []} showCards={!!endRound || false} />
+            {endRound &&
+                <div>
+                    <hr />
+                    <EndResult endRound={endRound} players={players} stompClient={stompClient} gameId={gameId}/>
+                </div>
+            }
         </DndProvider>
     );
 }

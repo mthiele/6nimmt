@@ -29,6 +29,12 @@ export const App = () => {
     })
   }, [])
 
+  useEffect(() => {
+    if (gameId != undefined) {
+      stompClient?.send(`/app/games/${gameId}/startNewRound`)
+    }
+  }, [gameId])
+
   const reconnect = (onConnect: (stomp: Client) => void = () => { }) => {
     const socket = new WebSocket("ws://192.168.2.100:8080/gs-guide-websocket")
     const stomp = Stomp.over(socket)
@@ -46,7 +52,7 @@ export const App = () => {
             <Router>
               <CreatePlayer path="/" stompClient={stompClient} setPlayer={setPlayer} reconnect={reconnect} />
               <GameLobby path="/gameLobby" stompClient={stompClient} thisPlayer={player} startedGame={setGameId} />
-              <SechsNimmt path="/game/:gameId" stompClient={stompClient} gameId={gameId} player={player}/>
+              <SechsNimmt path="/game/:gameId" stompClient={stompClient} gameId={gameId} player={player} />
             </Router>
           </StompContext.Provider>
         </div>

@@ -89,7 +89,8 @@ export interface UpdatedRowsMessage {
 
 export interface EndRound {
     readonly roundState: EndRoundState
-    readonly points: { [name: string]: number }
+    readonly points: { [name: string]: number[] }
+    readonly isGameFinished: Boolean
 }
 
 export interface EndRoundState {
