@@ -1,27 +1,28 @@
-import { RouteComponentProps } from "@reach/router"
+import { RouteComponentProps, navigate } from "@reach/router"
 import React, { useEffect, useState } from "react"
 import { DndProvider } from "react-dnd"
 import Backend from "react-dnd-html5-backend"
-import { Client, Message } from "stompjs"
+import { Client, Message } from "webstomp-client"
 import { Card, Player, PlayerId } from "../model/Game"
-import { EndRound, MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, RoundState, ROUND_FINISHED, selectRowMessage, SELECT_ROW, START_STEP, UPDATED_ROWS, PlayedCard } from "../model/Messages"
+import { EndRound, MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, RoundState, ROUND_FINISHED, selectRowMessage, SELECT_ROW, START_STEP, UPDATED_ROWS } from "../model/Messages"
 import { useRefState } from "../util"
 import { SingleCard } from "./Card"
 import { EndResult } from "./EndResult"
 import { Heap } from "./Heap"
-import { PlayedCards, PlayedCardsProps } from "./PlayedCards"
+import { PlayedCards } from "./PlayedCards"
 import { Rows } from "./Rows"
 
 export interface SechsNimmtProps {
     readonly stompClient: Client | undefined
     readonly gameId: string
     readonly player: Player | undefined
+    readonly logout: Boolean
 }
 
 type PlayedCards = [PlayerId, Card | undefined][]
 
 export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
-    const { stompClient, gameId, player } = props
+    const { stompClient, gameId, player, logout } = props
 
     const [players, setPlayers] = useState([] as Player[])
     const [roundState, roundStateRef, setRoundState] = useRefState(undefined as RoundState | undefined)
@@ -37,11 +38,11 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                 const subscription = stompClient?.subscribe(`/user/queue/activeGames/${gameId}/roundState`, (message: Message) => {
                     const newRoundState = JSON.parse(message.body) as RoundState
                     setRoundState(newRoundState)
-                    
+
                     const newPlayedCards: PlayedCards = Object.keys(newRoundState.playedCards)
                         .map((v, i) => [v, Object.values(newRoundState.playedCards)[i]])
                     setPlayedCards(newPlayedCards)
-                    
+
                     const thisPlayersCard = newPlayedCards.find(cards => cards[0] === player?.id)
                     if (thisPlayersCard) {
                         setSelectedCard(thisPlayersCard[1])
@@ -49,7 +50,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
 
                     subscription?.unsubscribe()
                 })
-                stompClient?.send(`/app/roundState/${gameId}`, {}, "")
+                stompClient?.send(`/app/roundState/${gameId}`, "")
             }
             const subsription = stompClient?.subscribe(`/user/queue/activeGames/${gameId}`, (message: Message) => {
                 const gameMessage = JSON.parse(message.body) as MessageTypes;
@@ -110,16 +111,23 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
 
     useEffect(() => {
         if (selectedCard) {
-            stompClient?.send(`/app/games/${gameId}/playCard`, {}, JSON.stringify(playCard(selectedCard)))
+            stompClient?.send(`/app/games/${gameId}/playCard`, JSON.stringify(playCard(selectedCard)))
         }
     }, [selectedCard])
+
+    useEffect(() => {
+        if (logout) {
+            stompClient?.send(`/app/games/${gameId}/leave`)
+            navigate("/gameLobby")
+        }
+    }, [logout])
 
     return (
         <DndProvider backend={Backend}>
             <div className="level">
                 <div className="level-left">
                     <Rows roundState={roundState} selectRowActive={selectRowActive} selectRow={selectRow} selectedRow={(index) => {
-                        stompClient?.send(`/app/games/${gameId}/selectedRow`, {}, JSON.stringify(selectRowMessage(index)))
+                        stompClient?.send(`/app/games/${gameId}/selectedRow`, JSON.stringify(selectRowMessage(index)))
                     }} />
                 </div>
                 <div className="level-right">
@@ -128,7 +136,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
             </div>
             <hr />
             <div className="card-hand">
-                {roundState?.playerState.deck.map((card, index) => 
+                {roundState?.playerState.deck.map((card, index) =>
                     <SingleCard key={index}
                         card={card}
                         canBeSelected={playedCards.length < players.length}

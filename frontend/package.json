@@ -24,7 +24,7 @@
     "react-dnd-html5-backend": "^10.0.2",
     "react-dom": "^16.13.1",
     "react-scripts": "3.4.1",
-    "stompjs": "^2.3.3",
+    "webstomp-client": "^1.2.6",
     "typescript": "~3.7.2"
   },
   "scripts": {

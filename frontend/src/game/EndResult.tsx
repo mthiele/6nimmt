@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react"
+import { navigate } from "@reach/router"
+import React from "react"
+import { Client } from "webstomp-client"
 import { Player } from "../model/Game"
 import { EndRound } from "../model/Messages"
-import { Client } from "stompjs"
-import { navigate } from "@reach/router"
 
 export interface EndResultProps {
     readonly endRound: EndRound

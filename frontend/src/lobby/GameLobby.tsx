@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Client, Message } from "stompjs";
+import { Client, Message } from "webstomp-client";
 import { Game, Player } from "../model/Game";
 import { MessageTypes, START_GAME } from "../model/Messages";
 import { RouteComponentProps } from "@reach/router";
@@ -28,7 +28,7 @@ export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
             const myGamesSubscription = stompClient.subscribe(`/user/queue/games`, (message: Message) => {
                 setGames(JSON.parse(message.body))
             })
-            stompClient.send("/app/listGames", {}, "")
+            stompClient.send("/app/listGames", "")
 
             const playersSubsription = stompClient.subscribe("/topic/players", (message: Message) => {
                 setPlayers(JSON.parse(message.body))
@@ -36,7 +36,7 @@ export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
             const myPlayersSubscription = stompClient.subscribe("/user/queue/players", (message: Message) => {
                 setPlayers(JSON.parse(message.body))
             })
-            stompClient.send("/app/listPlayers", {}, "")
+            stompClient.send("/app/listPlayers", "")
 
             return () => {
                 gamesSubscription.unsubscribe()
@@ -75,7 +75,7 @@ export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
         stompClient?.subscribe("/user/queue/game", (message: Message) => {
             setGameId(JSON.parse(message.body).id)
         })
-        stompClient?.send("/app/createNewGame", {}, JSON.stringify({}));
+        stompClient?.send("/app/createNewGame", JSON.stringify({}));
     };
 
     const canJoinGame = (game: Game) => {
@@ -84,7 +84,7 @@ export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
 
     const joinGame = (game: Game) => {
         setGameId(game.id)
-        stompClient?.send("/app/joinGame", {}, JSON.stringify(game))
+        stompClient?.send("/app/joinGame", JSON.stringify(game))
     }
 
     const canStartGame = (game: Game) => {
@@ -92,7 +92,7 @@ export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
     }
 
     const startGame = (game: Game) => {
-        stompClient?.send("/app/startGame", {}, JSON.stringify(game))
+        stompClient?.send("/app/startGame", JSON.stringify(game))
     }
 
     return (
@@ -116,10 +116,12 @@ export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
                     <ul className="list">
                         {games.map(game =>
                             <li key={game.id} className="list-item is-centered-vertically" style={{ color: game.started ? "grey" : "black" }}>
-                                {game.id} (Ersteller: {players.find(p => p.id === game.creator)?.name}),
-                        {game.activePlayers.filter(player => player !== game.creator).length > 0 && "(Mitspieler: " + game.activePlayers
-                                    .filter(player => player !== game.creator)
-                                    .map(player => players.find(p => p.id === player)?.name).join(", ") + ") "}
+                                {game.id} ({players.find(p => p.id === game.creator)?.name}
+                        {game.activePlayers.filter(player => player !== game.creator).length > 0
+                                    ? ", " + game.activePlayers
+                                        .filter(player => player !== game.creator)
+                                        .map(player => players.find(p => p.id === player)?.name).join(", ") + ")"
+                                    : ")"}
                                     &nbsp;
                                 {canJoinGame(game) && <button className="button" onClick={event => joinGame(game)}>Beitreten</button>}
                                 {canStartGame(game) && <button className="button" onClick={event => startGame(game)}>Starten</button>}

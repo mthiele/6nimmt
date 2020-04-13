@@ -1,5 +1,5 @@
 import React, { MutableRefObject, useEffect, useState } from 'react';
-import Stomp, { Client, Message } from "stompjs";
+import Stomp, { Client, Message } from "webstomp-client";
 import './App.css';
 import { SechsNimmt } from './game/SechsNimmt';
 import { CreatePlayer } from './lobby/CreatePlayer';
@@ -17,6 +17,7 @@ export const App = () => {
 
   const [player, setPlayer] = useState(undefined as Player | undefined);
   const [gameId, setGameId] = useState("")
+  const [logout, setLogout] = useState(false)
 
   useEffect(() => {
     reconnect((stompClient) => {
@@ -25,7 +26,7 @@ export const App = () => {
         setPlayer(players.find(p => p.id === sessionStorage.getItem(STORAGE_USER)))
         subscription.unsubscribe()
       })
-      stompClient?.send("/app/listPlayers", {}, "")
+      stompClient?.send("/app/listPlayers", "")
     })
   }, [])
 
@@ -44,6 +45,12 @@ export const App = () => {
     })
   }
 
+  const onClickLogout = () => {
+    setLogout(true)
+    // FIXME I feel dirty...
+    setInterval(() => setLogout(false), 500)
+  }
+
   return (
     <div className="Site">
       <div className="Site-content">
@@ -56,7 +63,7 @@ export const App = () => {
             </div>
             <div className="navbar-end">
               <div className="navbar-item">
-                <a>Logout</a>
+                <a onClick={onClickLogout}>Logout</a>
               </div>
             </div>
           </div>
@@ -66,7 +73,7 @@ export const App = () => {
             <Router>
               <CreatePlayer path="/" stompClient={stompClient} setPlayer={setPlayer} reconnect={reconnect} />
               <GameLobby path="/gameLobby" stompClient={stompClient} thisPlayer={player} startedGame={setGameId} />
-              <SechsNimmt path="/game/:gameId" stompClient={stompClient} gameId={gameId} player={player} />
+              <SechsNimmt path="/game/:gameId" stompClient={stompClient} gameId={gameId} player={player} logout={logout} />
             </Router>
           </StompContext.Provider>
         </div>

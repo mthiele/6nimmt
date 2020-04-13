@@ -1,6 +1,6 @@
 import { RouteComponentProps } from "@reach/router";
 import React, { useState } from "react";
-import { Client, Message } from "stompjs";
+import { Client, Message } from "webstomp-client";
 import { STORAGE_USER } from "../constants";
 import { Player } from "../model/Game";
 
@@ -25,7 +25,7 @@ export const CreatePlayer = (props: CreatePlayerProps & RouteComponentProps) => 
                 navigate && navigate("/gameLobby")
             })
         })
-        stompClient?.send("/app/createPlayer", {}, name)
+        stompClient?.send("/app/createPlayer", name)
     }
 
     return (
