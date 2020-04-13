@@ -4,12 +4,15 @@ import com.valuedriven.nimmt.Util.randomString
 import com.valuedriven.nimmt.Util.replace
 import com.valuedriven.nimmt.messages.*
 import com.valuedriven.nimmt.model.*
+import org.springframework.context.event.EventListener
 import org.springframework.messaging.handler.annotation.DestinationVariable
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.messaging.simp.annotation.SendToUser
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor
 import org.springframework.stereotype.Controller
+import org.springframework.web.socket.messaging.SessionDisconnectEvent
 import java.security.Principal
 import java.util.*
 
@@ -20,6 +23,16 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     private val games = mutableMapOf<GameId, Game>()
     private val players = mutableMapOf<PlayerId, Player>()
     private val roundStates = mutableMapOf<GameId, RoundState>()
+
+    @EventListener
+    fun onSocketDisconnected(event: SessionDisconnectEvent) {
+        val header = StompHeaderAccessor.wrap(event.message)
+
+        header.user?.let { user ->
+            val gameId = games.values.find { game -> game.activePlayers.contains(user.name) }?.id
+            if (gameId != null) leaveGame(user, gameId)
+        }
+    }
 
     @MessageMapping("/createPlayer")
     fun createPlayer(playerName: String, user: Principal) {
