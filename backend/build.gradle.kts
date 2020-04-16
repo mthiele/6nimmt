@@ -38,3 +38,13 @@ tasks.withType<KotlinCompile> {
 		jvmTarget = "1.8"
 	}
 }
+
+tasks.register<Copy>("copyFrontendFiles") {
+	from("../frontend/build")
+	into("${buildDir}/resources/main/static/")
+	dependsOn(":frontend:yarn_build")
+}
+
+tasks.named("bootJar") {
+	dependsOn("copyFrontendFiles")
+}
