@@ -38,9 +38,11 @@ export const App = () => {
 
   const reconnect = (onConnect: (stomp: Client) => void = () => { }) => {
     const isDev = process.env.NODE_ENV === "development";
+    const hostname = window.location.hostname
+    const port = window.location.port
     const socket = isDev
       ? new WebSocket("ws://localhost:8080/websocket")
-      : new WebSocket("ws://6nimmt.ddns.net/websocket")
+      : new WebSocket(`ws://${hostname}:${port}/websocket`)
     const stomp = Stomp.over(socket)
     stomp.connect({ token: sessionStorage.getItem(STORAGE_USER) || "" }, (frame: any) => {
       setStompClient(stomp)
