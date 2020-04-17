@@ -3,7 +3,7 @@ import { useDrop } from "react-dnd"
 import Constants from "./Constants"
 import classnames from "classnames"
 
-import "./CardPlaceholder.css"
+import "./CardPlaceholder.scss"
 import { SingleCard } from "./Card"
 import { Card } from "../model/Game"
 

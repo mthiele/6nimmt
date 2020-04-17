@@ -1,3 +1,5 @@
+@import "../index.scss";
+
 .card-placeholder-container {
     display: flex;
     justify-content: center;
@@ -12,6 +14,12 @@
     height: 7rem;
     padding: 0.5rem;
     margin: 1rem;
+    @include mobile {
+        width: 3.5rem;
+        height: 5rem;
+        padding: 0.25rem;
+        margin: 0.5rem;        
+    }
 }
 
 .card-placeholder.inactive {

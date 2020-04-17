@@ -1,3 +1,5 @@
+@import "../index.scss";
+
 .card-hand {
     display: flex;
     flex-direction: row;
@@ -25,6 +27,12 @@
     height: 7rem;
     padding: 0.5rem;
     margin: 1rem;
+    @include mobile {
+        width: 3.5rem;
+        height: 5rem;
+        padding: 0.25rem;
+        margin: 0.5rem;        
+    }
     
     &::before{
         content: "";
@@ -68,6 +76,10 @@
                 mask-size: contain;
                 width: 1rem;
                 height: 1rem;
+                @include mobile {
+                    width: 0.65rem;
+                    height: 0.65rem;
+                }
                 margin: 0.1rem;
 
                 &.one-point {
@@ -90,6 +102,9 @@
 
         .value {
             font-size: xx-large;
+            @include mobile {
+                font-size: large;
+            }
             font-weight: bold;
             text-align: center;
 

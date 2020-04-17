@@ -41,7 +41,7 @@ export const App = () => {
     const hostname = window.location.hostname
     const port = window.location.port
     const socket = isDev
-      ? new WebSocket("ws://localhost:8080/websocket")
+      ? new WebSocket("ws://192.168.2.100:8080/websocket")
       : new WebSocket(`ws://${hostname}:${port}/websocket`)
     const stomp = Stomp.over(socket)
     stomp.connect({ token: sessionStorage.getItem(STORAGE_USER) || "" }, (frame: any) => {

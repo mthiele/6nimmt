@@ -10,6 +10,7 @@
     "@types/node": "^12.0.0",
     "@types/reach__router": "^1.3.3",
     "@types/react": "^16.9.0",
+    "@types/react-dnd-multi-backend": "^5.0.0",
     "@types/react-dom": "^16.9.0",
     "@types/stompjs": "^2.3.4",
     "bulma": "^0.8.1",
@@ -22,10 +23,11 @@
     "react": "^16.13.1",
     "react-dnd": "^10.0.2",
     "react-dnd-html5-backend": "^10.0.2",
+    "react-dnd-touch-backend": "^10.0.2",
     "react-dom": "^16.13.1",
     "react-scripts": "3.4.1",
-    "webstomp-client": "^1.2.6",
-    "typescript": "~3.7.2"
+    "typescript": "~3.7.2",
+    "webstomp-client": "^1.2.6"
   },
   "scripts": {
     "start": "react-scripts start",

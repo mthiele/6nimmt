@@ -1312,6 +1312,14 @@
     "@types/history" "*"
     "@types/react" "*"
 
+"@types/react-dnd-multi-backend@^5.0.0":
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/@types/react-dnd-multi-backend/-/react-dnd-multi-backend-5.0.0.tgz#1faa152e02b88cc44f7fadb569beb3cee5184fe7"
+  dependencies:
+    "@types/react" "*"
+    react-dnd "^10.0.2"
+    react-dnd-touch-backend "^10.0.2"
+
 "@types/react-dom@*", "@types/react-dom@^16.9.0":
   version "16.9.5"
   resolved "https://registry.yarnpkg.com/@types/react-dom/-/react-dom-16.9.5.tgz#5de610b04a35d07ffd8f44edad93a71032d9aaa7"
@@ -7718,6 +7726,13 @@ react-dnd-html5-backend@^10.0.2:
   version "10.0.2"
   resolved "https://registry.yarnpkg.com/react-dnd-html5-backend/-/react-dnd-html5-backend-10.0.2.tgz#15cb9d2b923f43576a136df854e288cb5969784c"
   dependencies:
+    dnd-core "^10.0.2"
+
+react-dnd-touch-backend@^10.0.2:
+  version "10.0.2"
+  resolved "https://registry.yarnpkg.com/react-dnd-touch-backend/-/react-dnd-touch-backend-10.0.2.tgz#90cb916655539b838d49b8895e1813f8b874b3b4"
+  dependencies:
+    "@react-dnd/invariant" "^2.0.0"
     dnd-core "^10.0.2"
 
 react-dnd@^10.0.2:

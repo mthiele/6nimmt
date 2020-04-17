@@ -1,7 +1,8 @@
 import { RouteComponentProps, navigate } from "@reach/router"
 import React, { useEffect, useState } from "react"
 import { DndProvider } from "react-dnd"
-import Backend from "react-dnd-html5-backend"
+import HTML5Backend from "react-dnd-html5-backend"
+import TouchBackend from "react-dnd-touch-backend"
 import { Client, Message } from "webstomp-client"
 import { Card, Player, PlayerId } from "../model/Game"
 import { EndRound, MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, RoundState, ROUND_FINISHED, selectRowMessage, SELECT_ROW, START_STEP, UPDATED_ROWS } from "../model/Messages"
@@ -122,8 +123,16 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
         }
     }, [logout])
 
+    const isTouchDevice = () => {
+        if ("ontouchstart" in window) {
+          return true;
+        }
+        return false;
+      };
+      const backendForDND = isTouchDevice() ? TouchBackend : HTML5Backend;
+
     return (
-        <DndProvider backend={Backend}>
+        <DndProvider backend={backendForDND}>
             <div className="level">
                 <div className="level-left">
                     <Rows roundState={roundState} selectRowActive={selectRowActive} selectRow={selectRow} selectedRow={(index) => {
