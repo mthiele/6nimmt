@@ -37,11 +37,14 @@ export const App = () => {
   }, [gameId])
 
   const reconnect = (onConnect: (stomp: Client) => void = () => { }) => {
-    const socket = new WebSocket("ws://192.168.2.100:8080/gs-guide-websocket")
+    const isDev = process.env.NODE_ENV === "development";
+    const socket = isDev
+      ? new WebSocket("ws://localhost:8080/websocket")
+      : new WebSocket("ws://6nimmt.ddns.net/websocket")
     const stomp = Stomp.over(socket)
     stomp.connect({ token: sessionStorage.getItem(STORAGE_USER) || "" }, (frame: any) => {
       setStompClient(stomp)
-      onConnect(stomp)
+      onConnect(stomp) 
     })
   }
 
@@ -80,7 +83,7 @@ export const App = () => {
       </div>
       <footer className="footer">
         <div className="content has-text-centered">
-          Created by Michael Thiele
+          Created by mthiele
         </div>
       </footer>
     </div>

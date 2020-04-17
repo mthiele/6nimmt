@@ -48,3 +48,22 @@ tasks.register<Copy>("copyFrontendFiles") {
 tasks.named("bootJar") {
 	dependsOn("copyFrontendFiles")
 }
+
+val dockerBuild = "${buildDir}/docker"
+
+tasks.register<Copy>("copyJar") {
+	from("${buildDir}/libs")
+	into(dockerBuild)
+	dependsOn("bootJar")
+}
+
+tasks.register<Copy>("copyDockerFile") {
+	from("src/main/docker")
+	into(dockerBuild)
+}
+
+tasks.register<Exec>("docker") {
+	workingDir(dockerBuild)
+	commandLine("docker", "build", ".", "-t", "com.valuedriven/6nimmt")
+	dependsOn("copyJar", "copyDockerFile")
+}

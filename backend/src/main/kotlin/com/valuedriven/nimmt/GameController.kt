@@ -12,9 +12,14 @@ import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.messaging.simp.annotation.SendToUser
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor
 import org.springframework.stereotype.Controller
+import org.springframework.web.socket.messaging.SessionConnectEvent
 import org.springframework.web.socket.messaging.SessionDisconnectEvent
 import java.security.Principal
 import java.util.*
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+
 
 @Controller
 class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
@@ -23,15 +28,31 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     private val games = mutableMapOf<GameId, Game>()
     private val players = mutableMapOf<PlayerId, Player>()
     private val roundStates = mutableMapOf<GameId, RoundState>()
+    private val scheduler = Executors.newSingleThreadScheduledExecutor()
+    private val disconnectingPlayers = mutableMapOf<PlayerId, ScheduledFuture<*>>()
 
     @EventListener
     fun onSocketDisconnected(event: SessionDisconnectEvent) {
         val header = StompHeaderAccessor.wrap(event.message)
+        header.user?.let { disconnect(it) }
+    }
 
-        header.user?.let { user ->
+    @EventListener
+    fun onSocketReconnected(event: SessionConnectEvent) {
+        val header = StompHeaderAccessor.wrap(event.message)
+        header.user?.let { reconnect(it) }
+    }
+
+    fun disconnect(user: Principal) {
+        val scheduledFuture = scheduler.schedule({
             val gameId = games.values.find { game -> game.activePlayers.contains(user.name) }?.id
             if (gameId != null) leaveGame(user, gameId)
-        }
+        }, 5, TimeUnit.SECONDS)
+        disconnectingPlayers[user.name] = scheduledFuture
+    }
+
+    fun reconnect(user:Principal) {
+        disconnectingPlayers[user.name]?.cancel(true)
     }
 
     @MessageMapping("/createPlayer")
