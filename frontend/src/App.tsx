@@ -7,6 +7,7 @@ import { GameLobby } from './lobby/GameLobby';
 import { Player } from './model/Game';
 import { Router } from '@reach/router';
 import { STORAGE_USER } from './constants';
+import { Navbar } from './Navbar';
 
 export type ClientRef = MutableRefObject<Client | undefined>
 
@@ -46,7 +47,7 @@ export const App = () => {
     const stomp = Stomp.over(socket)
     stomp.connect({ token: sessionStorage.getItem(STORAGE_USER) || "" }, (frame: any) => {
       setStompClient(stomp)
-      onConnect(stomp) 
+      onConnect(stomp)
     })
   }
 
@@ -59,20 +60,7 @@ export const App = () => {
   return (
     <div className="Site">
       <div className="Site-content">
-        <nav className="navbar is-light" role="navigation" aria-label="main navigation">
-          <div className="container">
-            <div className="navbar-brand">
-              <div className="navbar-item">
-                <strong className="is-size-4 acme">6nimmt!</strong>
-              </div>
-            </div>
-            <div className="navbar-end">
-              <div className="navbar-item">
-                <a onClick={onClickLogout}>Logout</a>
-              </div>
-            </div>
-          </div>
-        </nav>
+        <Navbar onClickLogout={onClickLogout} />
         <div className="container">
           <StompContext.Provider value={stompClient}>
             <Router>
