@@ -48,7 +48,7 @@ export const App = () => {
     stomp.connect({ token: sessionStorage.getItem(STORAGE_USER) || "" }, (frame: any) => {
       setStompClient(stomp)
       onConnect(stomp)
-    })
+    }, () => setTimeout(() => reconnect(onConnect), 3000))
   }
 
   const onClickLogout = () => {

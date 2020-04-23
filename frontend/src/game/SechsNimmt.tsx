@@ -20,15 +20,13 @@ export interface SechsNimmtProps {
     readonly logout: Boolean
 }
 
-type PlayedCards = [PlayerId, Card | undefined][]
-
 export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
     const { stompClient, gameId, player, logout } = props
 
     const [players, setPlayers] = useState([] as Player[])
     const [roundState, roundStateRef, setRoundState] = useRefState(undefined as RoundState | undefined)
     const [selectedCard, setSelectedCard] = useState(undefined as Card | undefined)
-    const [playedCards, setPlayedCards] = useState([] as PlayedCards)
+    const [playedCards, playedCardsRef, setPlayedCards] = useRefState(new Map<PlayerId, Card | undefined>())
     const [selectRow, setSelectRow] = useState(undefined as number | undefined)
     const [selectRowActive, setSelectRowActive] = useState(false)
     const [endRound, setEndRound] = useState(undefined as EndRound | undefined)
@@ -40,9 +38,9 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                     const newRoundState = JSON.parse(message.body) as RoundState
                     setRoundState(newRoundState)
 
-                    const newPlayedCards: PlayedCards = Object.keys(newRoundState.playedCards)
+                    const newPlayedCards: [PlayerId, Card | undefined][] = Object.keys(newRoundState.playedCards)
                         .map((v, i) => [v, Object.values(newRoundState.playedCards)[i]])
-                    setPlayedCards(newPlayedCards)
+                    setPlayedCards(new Map(newPlayedCards))
 
                     const thisPlayersCard = newPlayedCards.find(cards => cards[0] === player?.id)
                     if (thisPlayersCard) {
@@ -59,15 +57,15 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                     case START_STEP:
                         setEndRound(undefined)
                         setRoundState(gameMessage.payload)
-                        setPlayedCards([])
+                        setPlayedCards(new Map())
                         setSelectRow(undefined)
                         setSelectRowActive(false)
                         break
                     case PLAYED_CARD:
-                        setPlayedCards(playedCards?.concat([[gameMessage.payload.player, undefined]]))
+                        setPlayedCards(new Map(playedCardsRef.current.set(gameMessage.payload.player, undefined)))
                         break
                     case REVEAL_ALL_CARDS:
-                        setPlayedCards(gameMessage.payload.map(playedCard => [playedCard.player, playedCard.card]))
+                        setPlayedCards(new Map(gameMessage.payload.map(playedCard => [playedCard.player, playedCard.card])))
                         break
                     case SELECT_ROW:
                         setSelectRow(gameMessage.payload)
@@ -125,11 +123,11 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
 
     const isTouchDevice = () => {
         if ("ontouchstart" in window) {
-          return true;
+            return true;
         }
         return false;
-      };
-      const backendForDND = isTouchDevice() ? TouchBackend : HTML5Backend;
+    };
+    const backendForDND = isTouchDevice() ? TouchBackend : HTML5Backend;
 
     return (
         <DndProvider backend={backendForDND}>
@@ -145,14 +143,16 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
             </div>
             <hr />
             <div className="card-hand">
-                {roundState?.playerState.deck.map((card, index) =>
-                    <SingleCard key={index}
-                        card={card}
-                        canBeSelected={playedCards.length < players.length}
-                        selected={JSON.stringify(selectedCard) === JSON.stringify(card)}
-                        setSelectedCard={setSelectedCard}
-                        canDrag={selectRowActive && JSON.stringify(selectedCard) === JSON.stringify(card)} />
-                )}
+                {roundState?.playerState.deck
+                    .sort((c1, c2) => c1.value - c2.value)
+                    .map((card, index) =>
+                        <SingleCard key={index}
+                            card={card}
+                            canBeSelected={playedCards.entries.length < players.length}
+                            selected={JSON.stringify(selectedCard) === JSON.stringify(card)}
+                            setSelectedCard={setSelectedCard}
+                            canDrag={selectRowActive && JSON.stringify(selectedCard) === JSON.stringify(card)} />
+                    )}
             </div>
             <hr />
             <Heap cards={roundState?.playerState.heap || []} showCards={!!endRound || false} />

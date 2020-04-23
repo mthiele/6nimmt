@@ -24,7 +24,7 @@ export const EndResult = (props: EndResultProps) => {
                 <thead>
                     <tr>
                         <th></th>
-                        {Object.keys(endRound.roundState.playerStates).map((player, index) =>
+                        {Object.keys(endRound.points).map((player, index) =>
                             <th key={index}>{players.find(p => p.id === player)?.name || "unknown"}</th>
                         )}
                     </tr>
