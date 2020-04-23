@@ -11,11 +11,9 @@ export const Heap = (props: HeapProps) => {
     const { cards, showCards } = props
 
     return (
-        <div className="level">
-            <div className="level-left">
-                {cards.map((card, index) =>
-                    <SingleCard key={index} card={card} isPile={!showCards}/>)}
-            </div>
+        <div className="card-hand heap">
+            {cards.map((card, index) =>
+                <SingleCard key={index} card={card} isPile={!showCards} />)}
         </div>
     )
 }

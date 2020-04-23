@@ -131,13 +131,13 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
 
     return (
         <DndProvider backend={backendForDND}>
-            <div className="level">
-                <div className="level-left">
+            <div className="columns is-vcentered is-multi">
+                <div className="column is-two-thirds">
                     <Rows roundState={roundState} selectRowActive={selectRowActive} selectRow={selectRow} selectedRow={(index) => {
                         stompClient?.send(`/app/games/${gameId}/selectedRow`, JSON.stringify(selectRowMessage(index)))
                     }} />
                 </div>
-                <div className="level-right">
+                <div className="column is-one-third">
                     <PlayedCards playedCards={playedCards} players={players} />
                 </div>
             </div>

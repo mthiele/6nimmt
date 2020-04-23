@@ -5,6 +5,9 @@
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
+    &.heap {
+      justify-content: start;  
+    }
 }
 
 .card-row {
@@ -17,7 +20,6 @@
 .card {
     font-family: 'Acme';
     display: flex;
-    position: relative;
     flex-direction: column;
     justify-content: space-between;
     border-style: solid;
@@ -26,7 +28,7 @@
     width: 5rem;
     height: 7rem;
     padding: 0.5rem;
-    margin: 1rem;
+    margin: 0.75rem;
     @include mobile {
         width: 3.5rem;
         height: 5rem;

@@ -19,9 +19,9 @@ export const PlayedCards = (props: PlayedCardsProps) => {
 
 
     return (
-        <div className="level">
+        <div className="columns is-vcentered is-centered is-multiline is-mobile">
             {playedCardsSorted
-                .map((playedCard, index) => <div key={index} className="level-item has-text-centered">
+                .map((playedCard, index) => <div key={index} className="column is-narrow has-text-centered">
                     <div>
                         <SingleCard card={playedCard[1]} />
                         <span>{players.find(player => player.id === playedCard[0])?.name}</span>
