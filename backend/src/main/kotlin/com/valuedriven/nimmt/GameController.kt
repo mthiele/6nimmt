@@ -47,7 +47,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         val scheduledFuture = scheduler.schedule({
             val gameId = games.values.find { game -> game.activePlayers.contains(user.name) }?.id
             if (gameId != null) leaveGame(user, gameId)
-        }, 5, TimeUnit.SECONDS)
+        }, 30, TimeUnit.SECONDS)
         disconnectingPlayers[user.name] = scheduledFuture
     }
 
