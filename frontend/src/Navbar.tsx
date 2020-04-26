@@ -11,7 +11,7 @@ export const Navbar = (props: NavbarProps) => {
     const [isActive, setIsActive] = useState(false)
 
     return (
-        <nav className="navbar is-light" role="navigation" aria-label="main navigation">
+        <nav className="navbar" role="navigation" aria-label="main navigation">
             <div className="container">
                 <div className="navbar-brand">
                     <div className="navbar-item">

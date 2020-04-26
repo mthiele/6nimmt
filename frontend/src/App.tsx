@@ -73,7 +73,7 @@ export const App = () => {
       </div>
       <footer className="footer">
         <div className="content has-text-centered">
-          Created by mthiele
+          v0.8 created by mthiele
         </div>
       </footer>
     </div>

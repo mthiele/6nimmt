@@ -3,6 +3,8 @@ import { Client, Message } from "webstomp-client";
 import { Game, Player } from "../model/Game";
 import { MessageTypes, START_GAME } from "../model/Messages";
 import { RouteComponentProps } from "@reach/router";
+import classnames from "classnames"
+import "./GameLobby.scss"
 
 interface GameLobbyProps {
     readonly stompClient: Client | undefined;
@@ -115,9 +117,9 @@ export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
                     <h5 className="title is-5">Spiele</h5>
                     <ul className="list">
                         {games.map(game =>
-                            <li key={game.id} className="list-item is-centered-vertically" style={{ color: game.started ? "grey" : "black" }}>
+                            <li key={game.id} className={classnames("list-item is-centered-vertically", game.started ? "game-started" : "game-available")}>
                                 {game.id} ({players.find(p => p.id === game.creator)?.name}
-                        {game.activePlayers.filter(player => player !== game.creator).length > 0
+                                {game.activePlayers.filter(player => player !== game.creator).length > 0
                                     ? ", " + game.activePlayers
                                         .filter(player => player !== game.creator)
                                         .map(player => players.find(p => p.id === player)?.name).join(", ") + ")"

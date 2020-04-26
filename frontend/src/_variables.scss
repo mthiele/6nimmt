@@ -1,19 +1,46 @@
-////////////////////////////////////////////////
-// SUPERHERO
-////////////////////////////////////////////////
-$grey-darker:  #1f2d3b;
-$grey-dark:    #2B3E50;
-$grey:         #4E5D6C;
-$grey-light:   #8694a4;
-$grey-lighter: #dee5ed;
-
-$orange:       #DF691A;
-$yellow:       #f0ad4e;
-$green:        #5cb85c;
-$blue:         #5bc0de;
-$red:          #d9534f;
+@import "~bulma/sass/utilities/initial-variables.sass";
 
 $primary: $orange !default;
 $footer-padding: 1rem 1.5rem 1rem;
 
-$dark: darken($grey-darker, 3);
+@media (prefers-color-scheme: light) {
+    :root {
+        --main: hsl(0, 0%, 100%);
+        --main-bis: hsl(0, 0%, 98%);
+        --main-ter: hsl(0, 0%, 96%);
+        --invert-color: hsl(0, 0%, 4%);
+        --invert-color-bis: hsl(0, 0%, 7%);
+        --invert-color-ter: hsl(0, 0%, 14%);
+        --text: hsl(0, 0%, 29%);
+        --text-invert: findColorInvert(hsl(0, 0%, 29%));
+        --text-light: hsl(0, 0%, 48%);
+        --text-strong: hsl(0, 0%, 21%);
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --main: hsl(0, 0%, 7%);
+        --main-bis: hsl(0, 0%, 10%);
+        --main-ter: hsl(0, 0%, 14%);
+        --invert-color: hsl(0, 0%, 100%);
+        --invert-color-bis: hsl(0, 0%, 98%);
+        --invert-color-ter: hsl(0, 0%, 96%);
+        --text: hsl(0, 0%, 91%);
+        --text-invert: findColorInvert(hsl(0, 0%, 91%));
+        --text-light: hsl(0, 0%, 81%);
+        --text-strong: hsl(0, 0%, 95%);
+    }
+}
+
+$scheme-main: var(--main);
+$scheme-main-bis: var(--main-bis);
+$scheme-main-ter: var(--main-ter);
+$scheme-invert: hsl(0, 0%, 4%); // variable does not work with box-shadow
+$scheme-invert-bis: var(--invert-color-bis);
+$scheme-invert-ter: var(--invert-color-ter);
+
+$text: var(--text);
+$text-invert: var(--text-invert);
+$text-light: var(--text-light);
+$text-strong: var(--text-strong);

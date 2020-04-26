@@ -43,15 +43,23 @@
         left: 10%;
         width: 80%; 
         height: 100%;
-        background-image: url("bull.svg");
-        background-repeat: no-repeat;
-        background-size: contain;
-        background-position: center;    
-        filter: opacity(0.03);
+        background-color: $text;
+        mask-image: url("bull.svg");
+        mask-repeat: no-repeat;
+        mask-size: contain;
+        mask-position: center;
+        filter: opacity(0.09);
+        @media (prefers-color-scheme: dark) {
+            fill: $white;
+            filter: opacity(0.05);
+        }
     }
 
     &.selected {
         background-color: #fdf7d4ec;
+        @media (prefers-color-scheme: dark) {
+            background-color: hsla(51, 91%, 91%, 0.525);
+        }
     }
 
     &.can-be-selected {
@@ -63,7 +71,13 @@
     }
 
     .value {
-        color: #ffffff
+        color: $text;
+    }
+
+    &.is-pile {
+        .value {
+            display: none;
+        }
     }
 
     &:not(.is-pile) {

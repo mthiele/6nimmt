@@ -1,0 +1,13 @@
+@import "../index.scss";
+
+.game-available {
+    color: $text;
+}
+
+.game-started {
+    color: $grey !important; 
+    @media (prefers-color-scheme: dark) {
+        color: $grey-light !important;
+    }
+    
+}

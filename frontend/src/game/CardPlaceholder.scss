@@ -13,7 +13,7 @@
     width: 5rem;
     height: 7rem;
     padding: 0.5rem;
-    margin: 1rem;
+    margin: 0.75rem;
     @include mobile {
         width: 3.5rem;
         height: 5rem;
@@ -24,6 +24,9 @@
 
 .card-placeholder.inactive {
     background-color: #f7f9ff;
+    @media (prefers-color-scheme: dark) {
+        background-color: #f7f9ff81;
+    }
 }
 
 .card-placeholder.can-drop {
