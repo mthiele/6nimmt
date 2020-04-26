@@ -31,8 +31,14 @@
 
 .card-placeholder.can-drop {
     background-color: #e6ecff;
+    @media (prefers-color-scheme: dark) {
+        background-color: #a9bdfa81;
+    }
 }
 
 .card-placeholder.active {
     background-color: #ccd8ff;
+    @media (prefers-color-scheme: dark) {
+        background-color: #91acfc81;
+    }
 }
