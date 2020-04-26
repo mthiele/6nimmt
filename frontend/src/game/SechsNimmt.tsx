@@ -229,10 +229,10 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                     .map((card, index) =>
                         <SingleCard key={index}
                             card={card}
-                            canBeSelected={playedCards.entries.length < players.length}
+                            canBeSelected={Array.from(playedCards.entries()).length < players.length}
                             selected={JSON.stringify(selectedCard) === JSON.stringify(card)}
                             setSelectedCard={setSelectedCard}
-                            canDrag={selectRowActive && JSON.stringify(selectedCard) === JSON.stringify(card)} />
+                            canDrag={selectRowActive && _.isEqual(selectedCard, card)} />
                     )}
             </div>
             <hr />

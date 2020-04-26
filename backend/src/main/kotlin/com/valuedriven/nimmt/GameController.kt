@@ -152,6 +152,10 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
         val playedCard = message.payload ?: throw IllegalArgumentException("Played card cannot be null")
         val roundState = getRoundState(gameId)
+        if (checkWhetherPlayerHasPlayedLastMissingCardThisStep(roundState)) {
+            return
+        }
+
         val playerState = getPlayerState(roundState, user.name)
         val game = getGame(gameId)
 
