@@ -21,7 +21,6 @@ export const Rows = React.memo((props: RowProps) => {
     const canDropHere = (rowIndex: number) => selectRow == undefined || selectRow === rowIndex
 
     const measureRef = useCallback((el, row, index) => {
-        console.log(el)
         if (el !== undefined) {
             refs.current[index] = [row, el]
             setPlaceholderPositions(refs.current.map(ref => ({ row: ref[0], x: ref[1]?.offsetLeft, y: ref[1]?.offsetTop })))

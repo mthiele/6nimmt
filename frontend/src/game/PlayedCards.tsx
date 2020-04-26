@@ -22,7 +22,6 @@ export const PlayedCards = React.memo((props: PlayedCardsProps) => {
 
 
     const measureRef = useCallback((el, playedCard, index) => {
-        console.log(el)
         if (el !== undefined) {
             refs.current[index] = [playedCard[1], el]
             setPlayedCardPositions(refs.current.map(ref => ({card: ref[0], x: ref[1]?.offsetLeft, y: ref[1]?.offsetTop})))

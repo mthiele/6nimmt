@@ -51,7 +51,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         disconnectingPlayers[user.name] = scheduledFuture
     }
 
-    fun reconnect(user:Principal) {
+    fun reconnect(user: Principal) {
         disconnectingPlayers[user.name]?.cancel(true)
     }
 
@@ -98,9 +98,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     @MessageMapping("/roundState/{gameId}")
     fun getRoundState(user: Principal, @DestinationVariable gameId: GameId) {
         val roundState = getRoundState(gameId)
-
-        val playerState = roundState.playerStates[user.name]
-                ?: throw IllegalArgumentException("Cannot find playerState for ${user.name}")
+        val playerState = getPlayerState(roundState, user.name)
         val revealAllCards = roundState.playerStates.all { (_, playerState) -> playerState.playedCard != null }
         val privateGameState = PrivateRoundState(
                 stepNumber = roundState.stepNumber,
@@ -117,6 +115,13 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
                 rows = roundState.rows)
 
         simpMessagingTemplate.convertAndSendToUser(user.name, "${activeGame(gameId)}/roundState", privateGameState)
+
+        if (roundState.playerStates.any { it.value.playedCard != null }) {
+            roundState.playerStates
+                    .minBy {
+                        it.value.playedCard?.value ?: Int.MAX_VALUE
+                    }?.let { (playerId, _) -> if (playerId == user.name) nextPlayerShouldSelectRow(roundState, gameId) }
+        }
 
         if (playerState.deck.isEmpty()) {
             val game = getGame(gameId)
