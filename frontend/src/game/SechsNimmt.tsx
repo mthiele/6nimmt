@@ -40,6 +40,14 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
     const [animateCard, setAnimateCard] = useState({ card: undefined, row: undefined, onFinished: undefined } as { card: Card | undefined, row: Row | undefined, onFinished: (() => void) | undefined })
     const [showAnimatedCard, setShowAnimatedCard] = useState(false)
 
+    const updates = (newRows: Row[]): [Card | undefined, Row | undefined] => {
+        const currentRows = roundStateRef.current?.rows
+        const updatedRowIndex = newRows.findIndex((row, rowIndex) => !_.isEqual(row.cards, currentRows?.[rowIndex]?.cards))
+        const updatedRow = newRows[updatedRowIndex]
+        const newCard = _.last(updatedRow?.cards)
+        return [newCard, updatedRow]
+    }
+
     useEffect(() => {
         if (stompClient?.connected) {
             if (roundState === undefined) {
@@ -64,11 +72,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                 const gameMessage = JSON.parse(message.body) as MessageTypes;
                 switch (gameMessage.messageType) {
                     case START_STEP: {
-                        const currentRows = roundStateRef.current?.rows
-                        const newRows = gameMessage.payload.rows
-                        const updatedRowIndex = newRows.findIndex((row, rowIndex) => row.cards.length !== currentRows?.[rowIndex]?.cards.length)
-                        const updatedRow = newRows[updatedRowIndex]
-                        const newCard = _.last(updatedRow?.cards)
+                        const [newCard, updatedRow] = updates(gameMessage.payload.rows)
                         setAnimateCard({
                             card: newCard,
                             row: updatedRow,
@@ -93,11 +97,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                         setSelectRowActive(true)
                         break
                     case UPDATED_ROWS: {
-                        const currentRows = roundStateRef.current?.rows
-                        const newRows = gameMessage.payload
-                        const updatedRowIndex = newRows.findIndex((row, rowIndex) => row.cards.length !== currentRows?.[rowIndex]?.cards.length)
-                        const updatedRow = newRows[updatedRowIndex]
-                        const newCard = _.last(updatedRow?.cards)
+                        const [newCard, updatedRow] = updates(gameMessage.payload)
                         if (_.isEqual(newCard, playedCardsRef.current.get(player?.id || ""))) {
                             setSelectRow(undefined)
                             setSelectRowActive(false)
@@ -115,16 +115,23 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                     }
                         break
                     case ROUND_FINISHED:
-                        setRoundState({
-                            ...gameMessage.payload.roundState,
-                            playerState: gameMessage.payload.roundState.playerStates[player?.id!!],
-                            playedCards: {},
+                        const [newCard, updatedRow] = updates(gameMessage.payload.roundState.rows)
+                        setAnimateCard({
+                            card: newCard,
+                            row: updatedRow,
+                            onFinished: () => {
+                                setRoundState({
+                                    ...gameMessage.payload.roundState,
+                                    playerState: gameMessage.payload.roundState.playerStates[player?.id!!],
+                                    playedCards: {},
+                                })
+                                setEndRound({
+                                    ...gameMessage.payload,
+                                })
+                                setSelectRow(undefined)
+                                setSelectRowActive(false)
+                            }
                         })
-                        setEndRound({
-                            ...gameMessage.payload,
-                        })
-                        setSelectRow(undefined)
-                        setSelectRowActive(false)
                         break
                     default:
                 }
@@ -167,6 +174,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
         const fromTop = playedCardPositions.find(pos => _.isEqual(pos.card, animateCard.card))?.y
         const toLeft = placeholderPositions.find(pos => _.isEqual(pos.row.number, animateCard.row?.number))?.x
         const toTop = placeholderPositions.find(pos => _.isEqual(pos.row.number, animateCard.row?.number))?.y
+
         if (animateCard.card && fromLeft && fromTop && toLeft && toTop) {
             setCardMovement({
                 left: `${fromLeft}px`,
