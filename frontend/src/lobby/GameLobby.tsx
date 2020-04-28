@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Client, Message } from "webstomp-client";
 import { Game, Player } from "../model/Game";
 import { MessageTypes, START_GAME } from "../model/Messages";
@@ -28,7 +28,13 @@ export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
                 setGames(JSON.parse(message.body))
             })
             const myGamesSubscription = stompClient.subscribe(`/user/queue/games`, (message: Message) => {
-                setGames(JSON.parse(message.body))
+                const games = JSON.parse(message.body) as Game[]
+                setGames(games)
+                const activeGame = games.find(game => game.activePlayers.some(player => player === thisPlayer?.id) || game.creator === thisPlayer?.id)
+                if (activeGame?.started) {
+                    navigate && navigate(`/game/${activeGame.id}`)
+                    startedGame(activeGame.id)
+                }
             })
             stompClient.send("/app/listGames", "")
 
@@ -49,17 +55,21 @@ export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
         }
     }, [stompClient?.connected]);
 
+    const startGameSubscription = useCallback((gameId: string) => {
+        const subsription = stompClient?.subscribe(`/user/queue/activeGames/${gameId}`, (message: Message) => {
+            const gameMessage = JSON.parse(message.body) as MessageTypes;
+            switch (gameMessage.messageType) {
+                case START_GAME:
+                    subsription?.unsubscribe()
+                    navigate && navigate(`/game/${gameId}`)
+                    startedGame(gameId)
+            }
+        })
+    }, [gameId])
+
     useEffect(() => {
         if (gameId !== "") {
-            const subsription = stompClient?.subscribe(`/user/queue/activeGames/${gameId}`, (message: Message) => {
-                const gameMessage = JSON.parse(message.body) as MessageTypes;
-                switch (gameMessage.messageType) {
-                    case START_GAME:
-                        subsription?.unsubscribe()
-                        navigate && navigate(`/game/${gameId}`)
-                        startedGame(gameId)
-                }
-            })
+            startGameSubscription(gameId)
         }
     }, [gameId])
 
@@ -94,6 +104,7 @@ export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
     }
 
     const startGame = (game: Game) => {
+        startGameSubscription(game.id)
         stompClient?.send("/app/startGame", JSON.stringify(game))
     }
 

@@ -84,6 +84,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                                 setPlayedCards(new Map())
                                 setSelectRow(undefined)
                                 setSelectRowActive(false)
+                                setSelectedCard(undefined)
                             }
                         })
                     }
