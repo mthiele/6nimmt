@@ -45,6 +45,9 @@ export const App = () => {
       ? new WebSocket("ws://192.168.2.100:8080/websocket")
       : new WebSocket(`ws://${hostname}:${port}/websocket`)
     const stomp = Stomp.over(socket)
+    if (!isDev) {
+      stomp.debug = () => {}
+    } 
     stomp.connect({ token: sessionStorage.getItem(STORAGE_USER) || "" }, (frame: any) => {
       setStompClient(stomp)
       onConnect(stomp)

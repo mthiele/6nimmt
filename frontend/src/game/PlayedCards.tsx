@@ -1,7 +1,6 @@
 import React, { useRef, useCallback } from "react"
 import { SingleCard } from "./Card"
 import { PlayerId, Card, Player } from "../model/Game"
-import useDeepCompareEffect from "use-deep-compare-effect"
 
 export interface PlayedCardsProps {
     readonly playedCards: Map<PlayerId, Card | undefined>

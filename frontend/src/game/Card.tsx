@@ -16,7 +16,7 @@ export interface CardProps {
     readonly isPile?: boolean
 }
 
-export const SingleCard = React.forwardRef((props: CardProps = {
+export const SingleCard = React.memo(React.forwardRef((props: CardProps = {
     card: undefined,
     revealed: true,
     canBeSelected: false,
@@ -71,4 +71,4 @@ export const SingleCard = React.forwardRef((props: CardProps = {
             <div ref={ref} className="card"></div>
         )
     }
-})
+}))

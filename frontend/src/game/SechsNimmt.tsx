@@ -1,9 +1,9 @@
 import { navigate, RouteComponentProps } from "@reach/router"
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useCallback } from "react"
 import { DndProvider } from "react-dnd"
 import HTML5Backend from "react-dnd-html5-backend"
 import TouchBackend from "react-dnd-touch-backend"
-import { animated, useSpring } from "react-spring"
+import { animated, useSpring, config } from "react-spring"
 import { Client, Message } from "webstomp-client"
 import { Card, Player, PlayerId, Row } from "../model/Game"
 import { EndRound, MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, RoundState, ROUND_FINISHED, selectRowMessage, SELECT_ROW, START_STEP, UPDATED_ROWS } from "../model/Messages"
@@ -39,6 +39,8 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
     const [playedCardPositions, setPlayedCardPositions] = useState([] as { card: Card | undefined, x: number | undefined, y: number | undefined }[])
     const [animateCard, setAnimateCard] = useState({ card: undefined, row: undefined, onFinished: undefined } as { card: Card | undefined, row: Row | undefined, onFinished: (() => void) | undefined })
     const [showAnimatedCard, setShowAnimatedCard] = useState(false)
+
+    const setSelectedCardMemo = useCallback(setSelectedCard, [])
 
     const updates = (newRows: Row[]): [Card | undefined, Row | undefined] => {
         const currentRows = roundStateRef.current?.rows
@@ -166,7 +168,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
     const [cardMovement, setCardMovement] = useSpring(() => ({
         left: "0px",
         top: "0px",
-        config: { duration: ANIMATION_DURATION },
+        config: config.slow,
     }))
 
     useEffect(() => {
@@ -227,7 +229,10 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                     />
                 </div>
                 <div className="column is-one-third">
-                    <PlayedCards playedCards={playedCards} players={players} setPlayedCardPositions={setPlayedCardPositions} />
+                    <PlayedCards
+                        playedCards={playedCards}
+                        players={players}
+                        setPlayedCardPositions={setPlayedCardPositions} />
                 </div>
             </div>
             <hr />
@@ -239,7 +244,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                             card={card}
                             canBeSelected={Array.from(playedCards.entries()).length < players.length}
                             selected={JSON.stringify(selectedCard) === JSON.stringify(card)}
-                            setSelectedCard={setSelectedCard}
+                            setSelectedCard={setSelectedCardMemo}
                             canDrag={selectRowActive && _.isEqual(selectedCard, card)} />
                     )}
             </div>

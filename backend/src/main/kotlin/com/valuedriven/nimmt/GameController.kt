@@ -47,18 +47,20 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         val scheduledFuture = scheduler.schedule({
             val gameId = games.values.find { game -> game.activePlayers.contains(user.name) }?.id
             if (gameId != null) leaveGame(user, gameId)
+            players[user.name]?.let { player -> players[user.name] = player.copy(active = false) }
         }, 30, TimeUnit.SECONDS)
         disconnectingPlayers[user.name] = scheduledFuture
     }
 
     fun reconnect(user: Principal) {
         disconnectingPlayers[user.name]?.cancel(true)
+        players[user.name]?.let { player -> players[user.name] = player.copy(active = true) }
     }
 
     @MessageMapping("/createPlayer")
     fun createPlayer(playerName: String, user: Principal) {
         // use a random ID as the given user could be a cached older user
-        val newPlayer = Player(name = playerName, id = UUID.randomUUID().toString(), inGame = null)
+        val newPlayer = Player(name = playerName, id = UUID.randomUUID().toString(), inGame = null, active = true)
         players.putIfAbsent(newPlayer.id, newPlayer)
 
         simpMessagingTemplate.convertAndSendToUser(user.name, "/queue/player", newPlayer)
@@ -86,13 +88,13 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     @MessageMapping("/listGames")
     @SendToUser("/queue/games")
     fun listGames(): List<Game> {
-        return games.values.toList()
+        return games.values.filter { game -> game.activePlayers.any { playerId -> players[playerId]?.active ?: false } }
     }
 
     @MessageMapping("/listPlayers")
     @SendToUser("/queue/players")
     fun listPlayers(): List<Player> {
-        return players.values.toList()
+        return players.values.filter { player -> player.active }
     }
 
     @MessageMapping("/roundState/{gameId}")
@@ -375,7 +377,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
     private fun playerJoinsGame(user: Principal, gameId: GameId?) {
         players[user.name]?.let { player ->
-            players.replace(user.name, player.copy(inGame = gameId))
+            players.replace(user.name, player.copy(inGame = gameId, active = true))
             simpMessagingTemplate.convertAndSend("/topic/players", players.values)
         }
     }
