@@ -19,13 +19,12 @@ export interface SechsNimmtProps {
     readonly stompClient: Client | undefined
     readonly gameId: string
     readonly player: Player | undefined
-    readonly logout: Boolean
 }
 
 const ANIMATION_DURATION = 750
 
 export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
-    const { stompClient, gameId, player, logout } = props
+    const { stompClient, gameId, player } = props
 
     const [players, setPlayers] = useState([] as Player[])
     const [roundState, roundStateRef, setRoundState] = useRefState(undefined as RoundState | undefined)
@@ -158,13 +157,6 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
             stompClient?.send(`/app/games/${gameId}/playCard`, JSON.stringify(playCard(selectedCard)))
         }
     }, [selectedCard])
-
-    useEffect(() => {
-        if (logout) {
-            stompClient?.send(`/app/games/${gameId}/leave`)
-            navigate("/gameLobby")
-        }
-    }, [logout])
 
     const [cardMovement, setCardMovement] = useSpring(() => ({
         left: "0px",

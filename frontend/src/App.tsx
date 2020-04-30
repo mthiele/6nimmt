@@ -5,7 +5,7 @@ import { SechsNimmt } from './game/SechsNimmt';
 import { CreatePlayer } from './lobby/CreatePlayer';
 import { GameLobby } from './lobby/GameLobby';
 import { Player } from './model/Game';
-import { Router } from '@reach/router';
+import { Router, navigate } from '@reach/router';
 import { STORAGE_USER } from './constants';
 import { Navbar } from './Navbar';
 
@@ -18,7 +18,6 @@ export const App = () => {
 
   const [player, setPlayer] = useState(undefined as Player | undefined);
   const [gameId, setGameId] = useState("")
-  const [logout, setLogout] = useState(false)
 
   useEffect(() => {
     reconnect((stompClient) => {
@@ -46,8 +45,8 @@ export const App = () => {
       : new WebSocket(`ws://${hostname}:${port}/websocket`)
     const stomp = Stomp.over(socket)
     if (!isDev) {
-      stomp.debug = () => {}
-    } 
+      stomp.debug = () => { }
+    }
     stomp.connect({ token: sessionStorage.getItem(STORAGE_USER) || "" }, (frame: any) => {
       setStompClient(stomp)
       onConnect(stomp)
@@ -55,9 +54,9 @@ export const App = () => {
   }
 
   const onClickLogout = () => {
-    setLogout(true)
-    // FIXME I feel dirty...
-    setInterval(() => setLogout(false), 500)
+    stompClient?.send("/app/logout")
+    sessionStorage.removeItem(STORAGE_USER)
+    navigate && navigate("/")
   }
 
   return (
@@ -69,7 +68,7 @@ export const App = () => {
             <Router>
               <CreatePlayer path="/" stompClient={stompClient} setPlayer={setPlayer} reconnect={reconnect} />
               <GameLobby path="/gameLobby" stompClient={stompClient} thisPlayer={player} startedGame={setGameId} />
-              <SechsNimmt path="/game/:gameId" stompClient={stompClient} gameId={gameId} player={player} logout={logout} />
+              <SechsNimmt path="/game/:gameId" stompClient={stompClient} gameId={gameId} player={player} />
             </Router>
           </StompContext.Provider>
         </div>

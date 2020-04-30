@@ -45,7 +45,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
     fun disconnect(user: Principal) {
         val scheduledFuture = scheduler.schedule({
-            val gameId = games.values.find { game -> game.activePlayers.contains(user.name) }?.id
+            val gameId = findGameOfPlayer(user)
             if (gameId != null) leaveGame(user, gameId)
             players[user.name]?.let { player -> players[user.name] = player.copy(active = false) }
         }, 30, TimeUnit.SECONDS)
@@ -55,6 +55,13 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     fun reconnect(user: Principal) {
         disconnectingPlayers[user.name]?.cancel(true)
         players[user.name]?.let { player -> players[user.name] = player.copy(active = true) }
+    }
+
+    @MessageMapping("/logout")
+    fun logout(user: Principal) {
+        val gameId = findGameOfPlayer(user)
+        if (gameId != null) leaveGame(user, gameId)
+        players.remove(user.name)
     }
 
     @MessageMapping("/createPlayer")
@@ -375,10 +382,13 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
     private fun activeGame(gameId: GameId) = "/queue/activeGames/$gameId"
 
+    private fun findGameOfPlayer(user: Principal) =
+            games.values.find { game -> game.activePlayers.contains(user.name) }?.id
+
     private fun playerJoinsGame(user: Principal, gameId: GameId?) {
         players[user.name]?.let { player ->
             players.replace(user.name, player.copy(inGame = gameId, active = true))
-            simpMessagingTemplate.convertAndSend("/topic/players", players.values)
+            simpMessagingTemplate.convertAndSend("/topic/players", players.values.filter { it.active })
         }
     }
 
