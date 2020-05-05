@@ -29,6 +29,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
     const [players, setPlayers] = useState([] as Player[])
     const [roundState, roundStateRef, setRoundState] = useRefState(undefined as RoundState | undefined)
     const [selectedCard, setSelectedCard] = useState(undefined as Card | undefined)
+    const [canChangeCardSelection, setCanChangeCardSelection] = useState(true)
     const [playedCards, playedCardsRef, setPlayedCards] = useRefState(new Map<PlayerId, Card | undefined>())
     const [selectRow, setSelectRow] = useState(undefined as number | undefined)
     const [selectRowActive, setSelectRowActive] = useState(false)
@@ -63,6 +64,10 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                     const thisPlayersCard = newPlayedCards.find(cards => cards[0] === player?.id)
                     if (thisPlayersCard) {
                         setSelectedCard(thisPlayersCard[1])
+                        if (newPlayedCards.every((playerId, playedCard) => playedCard !== undefined)
+                            && newPlayedCards.length === newRoundState.numberOfPlayers) {
+                            setCanChangeCardSelection(false)
+                        }
                     }
 
                     subscription?.unsubscribe()
@@ -84,6 +89,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                                 setSelectRow(undefined)
                                 setSelectRowActive(false)
                                 setSelectedCard(undefined)
+                                setCanChangeCardSelection(true)
                             }
                         })
                     }
@@ -93,6 +99,7 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                         break
                     case REVEAL_ALL_CARDS:
                         setPlayedCards(new Map(gameMessage.payload.map(playedCard => [playedCard.player, playedCard.card])))
+                        setCanChangeCardSelection(false)
                         break
                     case SELECT_ROW:
                         setSelectRow(gameMessage.payload)
@@ -235,8 +242,8 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
                     .map((card, index) =>
                         <SingleCard key={index}
                             card={card}
-                            canBeSelected={Array.from(playedCards.entries()).length < players.length}
-                            selected={JSON.stringify(selectedCard) === JSON.stringify(card)}
+                            canBeSelected={canChangeCardSelection}
+                            selected={_.isEqual(selectedCard, card)}
                             setSelectedCard={setSelectedCardMemo}
                             canDrag={selectRowActive && _.isEqual(selectedCard, card)} />
                     )}

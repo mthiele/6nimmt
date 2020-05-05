@@ -16,7 +16,8 @@ export interface Player {
 export interface PlayerState {
     readonly heap: Card[]
     readonly deck: Card[]
-    readonly playedCard: Card | undefined   
+    readonly playedCard: Card | undefined
+    readonly placedCard: Boolean   
 }
 
 export interface Card {

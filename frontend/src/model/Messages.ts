@@ -35,6 +35,7 @@ export interface RoundState {
     readonly playerState: PlayerState
     readonly playedCards: { [name: string]: Card | undefined}
     readonly rows: Row[]
+    readonly numberOfPlayers: number
 }
 
 export interface PlayCardMessage {
@@ -98,6 +99,7 @@ export interface EndRoundState {
     readonly stepNumber: number
     readonly playerStates: { [name: string]: PlayerState }
     readonly rows: Row[]
+    readonly numberOfPlayers: number
 }
 
 export interface RoundFinishedMessage {

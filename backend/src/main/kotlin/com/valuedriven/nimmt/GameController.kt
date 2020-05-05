@@ -4,6 +4,7 @@ import com.valuedriven.nimmt.Util.randomString
 import com.valuedriven.nimmt.Util.replace
 import com.valuedriven.nimmt.messages.*
 import com.valuedriven.nimmt.model.*
+import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
 import org.springframework.messaging.handler.annotation.DestinationVariable
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -24,6 +25,8 @@ import java.util.concurrent.TimeUnit
 @Controller
 class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
+    private val logger = LoggerFactory.getLogger(GameController::class.java)
+
     // FIXME concurrency?
     private val games = mutableMapOf<GameId, Game>()
     private val players = mutableMapOf<PlayerId, Player>()
@@ -34,21 +37,23 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     @EventListener
     fun onSocketDisconnected(event: SessionDisconnectEvent) {
         val header = StompHeaderAccessor.wrap(event.message)
+        logger.info("disconnect: ${header.user?.name} (${players[header.user?.name]?.name})")
         header.user?.let { disconnect(it) }
     }
 
     @EventListener
     fun onSocketReconnected(event: SessionConnectEvent) {
         val header = StompHeaderAccessor.wrap(event.message)
+        logger.info("re-connect: ${header.user?.name} (${players[header.user?.name]?.name})")
         header.user?.let { reconnect(it) }
     }
 
     fun disconnect(user: Principal) {
         val scheduledFuture = scheduler.schedule({
             val gameId = findGameOfPlayer(user)
-            if (gameId != null) leaveGame(user, gameId)
             players[user.name]?.let { player -> players[user.name] = player.copy(active = false) }
-        }, 30, TimeUnit.SECONDS)
+            if (gameId != null) leaveGame(user, gameId)
+        }, 90, TimeUnit.SECONDS)
         disconnectingPlayers[user.name] = scheduledFuture
     }
 
@@ -59,9 +64,12 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
 
     @MessageMapping("/logout")
     fun logout(user: Principal) {
+        logger.info("logout: ${user.name} (${players[user.name]?.name})")
+
         val gameId = findGameOfPlayer(user)
         if (gameId != null) leaveGame(user, gameId)
         players.remove(user.name)
+        simpMessagingTemplate.convertAndSend("/topic/players", activePlayers())
     }
 
     @MessageMapping("/createPlayer")
@@ -70,8 +78,10 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         val newPlayer = Player(name = playerName, id = UUID.randomUUID().toString(), inGame = null, active = true)
         players.putIfAbsent(newPlayer.id, newPlayer)
 
+        logger.info("create player: ${user.name} (${players[user.name]?.name})")
+
         simpMessagingTemplate.convertAndSendToUser(user.name, "/queue/player", newPlayer)
-        simpMessagingTemplate.convertAndSend("/topic/players", players.values)
+        simpMessagingTemplate.convertAndSend("/topic/players", activePlayers())
     }
 
     @MessageMapping("/createNewGame")
@@ -101,32 +111,36 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     @MessageMapping("/listPlayers")
     @SendToUser("/queue/players")
     fun listPlayers(): List<Player> {
-        return players.values.filter { player -> player.active }
+        return activePlayers()
     }
 
     @MessageMapping("/roundState/{gameId}")
     fun getRoundState(user: Principal, @DestinationVariable gameId: GameId) {
         val roundState = getRoundState(gameId)
         val playerState = getPlayerState(roundState, user.name)
-        val revealAllCards = roundState.playerStates.all { (_, playerState) -> playerState.playedCard != null }
+        val everybodyPlayedTheirCard = roundState.playerStates.all { (_, playerState) -> playerState.playedCard != null }
+        val somePlayersHaveStartedToPlaceTheirCards = roundState.playerStates.any { (_, playerState) -> playerState.placedCard }
+        val cardsHaveToBePlaced = everybodyPlayedTheirCard || somePlayersHaveStartedToPlaceTheirCards
         val privateGameState = PrivateRoundState(
                 stepNumber = roundState.stepNumber,
                 playerState = playerState,
                 playedCards = roundState.playerStates.filter { (_, playerState) -> playerState.playedCard != null }
                         .map { (playerId, playerState) ->
                             Pair(playerId,
-                                    if (revealAllCards || playerId == user.name)
+                                    if (cardsHaveToBePlaced || playerId == user.name)
                                         playerState.playedCard
                                     else
                                         null)
                         }
                         .toMap(),
-                rows = roundState.rows)
+                rows = roundState.rows,
+                numberOfPlayers = roundState.playerStates.size)
 
         simpMessagingTemplate.convertAndSendToUser(user.name, "${activeGame(gameId)}/roundState", privateGameState)
 
-        if (roundState.playerStates.any { it.value.playedCard != null }) {
+        if (cardsHaveToBePlaced) {
             roundState.playerStates
+                    .filter { !it.value.placedCard }
                     .minBy {
                         it.value.playedCard?.value ?: Int.MAX_VALUE
                     }?.let { (playerId, _) -> if (playerId == user.name) nextPlayerShouldSelectRow(roundState, gameId) }
@@ -208,7 +222,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
                     }
 
                     val newStepNumber =
-                            if (roundState.playerStates.minus(user.name).all { entry -> entry.value.playedCard == null })
+                            if (roundState.playerStates.minus(user.name).all { entry -> entry.value.placedCard })
                                 roundState.stepNumber + 1
                             else
                                 roundState.stepNumber
@@ -243,41 +257,48 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         simpMessagingTemplate.convertAndSendToUser(user.name, activeGame(game.id),
                 StartStepMessage(payload = PrivateRoundState(
                         stepNumber = roundState.stepNumber,
-                        playerState = getPlayerState(roundState, user.name),
+                        playerState = getPlayerState(roundState, user.name).copy(playedCard = null, placedCard = false),
                         playedCards = mapOf(),
-                        rows = roundState.rows)))
+                        rows = roundState.rows,
+                        numberOfPlayers = roundState.playerStates.size)))
     }
 
     @MessageMapping("/games/{gameId}/leave")
     fun leaveGame(user: Principal, @DestinationVariable gameId: GameId) {
+        println("******* ${user.name} leaves game $gameId")
+
         val game = getGame(gameId)
-        val roundState = getRoundState(gameId)
+        val roundState = roundStates[gameId]
 
-        val newRoundState = roundState.copy(playerStates = roundState.playerStates.minus(user.name))
-        roundStates[gameId] = newRoundState
+        if (roundState != null) {
+            val newRoundState = roundState.copy(playerStates = roundState.playerStates.minus(user.name))
+            roundStates[gameId] = newRoundState
 
-        when {
-            game.activePlayers.size == 1 -> {
-                games.remove(gameId)
-                roundStates.remove(gameId)
-            }
+            when {
+                newRoundState.playerStates.all { (_, playerState) -> playerState.deck.size + newRoundState.stepNumber == 10 } -> {
+                    startNewStep(newRoundState, gameId)
+                }
 
-            newRoundState.playerStates.all { (_, playerState) -> playerState.deck.size + newRoundState.stepNumber == 10 } -> {
-                startNewStep(newRoundState, gameId)
-            }
-
-            checkWhetherPlayerHasPlayedLastMissingCardThisStep(newRoundState) -> {
-                sendRevealAllPlayedCards(game, newRoundState)
-                nextPlayerShouldSelectRow(newRoundState, gameId)
+                checkWhetherPlayerHasPlayedLastMissingCardThisStep(newRoundState) -> {
+                    sendRevealAllPlayedCards(game, newRoundState)
+                    nextPlayerShouldSelectRow(newRoundState, gameId)
+                }
             }
         }
 
-        if (game.activePlayers.size != 1)
+        if (game.creator == user.name || !game.started) {
+            game.activePlayers.forEach {
+                players.compute(it) { _, player -> player?.copy(inGame = null) }
+            }
+            games.remove(gameId)
+            roundStates.remove(gameId)
+        } else {
             games[gameId] = game.copy(activePlayers = game.activePlayers.minus(user.name), points = game.points.minus(user.name))
+        }
         simpMessagingTemplate.convertAndSend("/topic/games", games.values)
 
         players.compute(user.name) { _, player -> player?.copy(inGame = null) }
-        simpMessagingTemplate.convertAndSend("/topic/players", players.values)
+        simpMessagingTemplate.convertAndSend("/topic/players", activePlayers())
     }
 
     private fun initNewRound(game: Game) {
@@ -288,7 +309,7 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
                 .toMutableList()
 
         val playerStates = game.points
-                .map { PlayerState(heap = emptyList(), deck = deal10Cards(cards, random), playedCard = null) }
+                .map { PlayerState(heap = emptyList(), deck = deal10Cards(cards, random), playedCard = null, placedCard = false) }
 
         val rows = (0..3)
                 .map { Row(number = it, cards = assign1Card(cards, random)) }
@@ -310,27 +331,39 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
         return Pair(Row(number = selectedRow.number, cards = listOf(playedCard)),
                 playerState.copy(heap = playerState.heap.plus(selectedRow.cards),
                         deck = playerState.deck.minus(playedCard),
-                        playedCard = null))
+                        placedCard = true))
     }
 
     private fun addCardToRow(selectedRow: Row, playedCard: Card, playerState: PlayerState): Pair<Row, PlayerState> {
         return Pair(Row(number = selectedRow.number, cards = selectedRow.cards.plus(playedCard)),
                 playerState.copy(deck = playerState.deck.minus(playedCard),
-                        playedCard = null))
+                        placedCard = true))
     }
 
     private fun startNewStep(roundState: RoundState, gameId: GameId) {
-        if (roundState.stepNumber == 11) {
-            endRound(gameId, roundState)
+        val newRoundState = resetPlayedCards(roundState, gameId)
+
+        if (newRoundState.stepNumber == 11) {
+            endRound(gameId, newRoundState)
         } else {
-            roundState.playerStates.keys.forEach { player ->
+            newRoundState.playerStates.keys.forEach { player ->
                 simpMessagingTemplate.convertAndSendToUser(player, activeGame(gameId),
-                        StartStepMessage(PrivateRoundState(stepNumber = roundState.stepNumber,
-                                playerState = getPlayerState(roundState, player),
+                        StartStepMessage(PrivateRoundState(stepNumber = newRoundState.stepNumber,
+                                playerState = getPlayerState(newRoundState, player),
                                 playedCards = mapOf(),
-                                rows = roundState.rows)))
+                                rows = newRoundState.rows,
+                                numberOfPlayers = newRoundState.playerStates.size)))
             }
         }
+    }
+
+    private fun resetPlayedCards(roundState: RoundState, gameId: GameId): RoundState {
+        val newRoundState = roundState.copy(playerStates = roundState.playerStates.map { (playerId, playerState) ->
+            Pair(playerId, playerState.copy(playedCard = null, placedCard = false))
+        }.toMap())
+
+        roundStates[gameId] = newRoundState
+        return newRoundState
     }
 
     private fun endRound(gameId: GameId, roundState: RoundState) {
@@ -388,9 +421,11 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     private fun playerJoinsGame(user: Principal, gameId: GameId?) {
         players[user.name]?.let { player ->
             players.replace(user.name, player.copy(inGame = gameId, active = true))
-            simpMessagingTemplate.convertAndSend("/topic/players", players.values.filter { it.active })
+            simpMessagingTemplate.convertAndSend("/topic/players", activePlayers())
         }
     }
+
+    private fun activePlayers() = players.values.filter { it.active }
 
     private fun deal10Cards(cards: MutableList<Card>, random: Random) =
             IntArray(10).map { cards.removeAt(random.nextInt(cards.size)) }
@@ -409,12 +444,14 @@ class GameController(private val simpMessagingTemplate: SimpMessagingTemplate) {
     }
 
     private fun nextPlayerShouldSelectRow(roundState: RoundState, gameId: GameId) {
-        roundState.playerStates.minBy {
-            it.value.playedCard?.value ?: Int.MAX_VALUE
-        }?.let { (playerId, nextPlayer) ->
-            val selectRow = rowToPlaceCard(roundState, nextPlayer)
-            simpMessagingTemplate.convertAndSendToUser(playerId, activeGame(gameId), SelectRowMessage(selectRow?.number))
-        }
+        roundState.playerStates
+                .filter { !it.value.placedCard }
+                .minBy {
+                    it.value.playedCard?.value ?: Int.MAX_VALUE
+                }?.let { (playerId, nextPlayer) ->
+                    val selectRow = rowToPlaceCard(roundState, nextPlayer)
+                    simpMessagingTemplate.convertAndSendToUser(playerId, activeGame(gameId), SelectRowMessage(selectRow?.number))
+                }
     }
 
     private fun rowToPlaceCard(roundState: RoundState, playerState: PlayerState) =

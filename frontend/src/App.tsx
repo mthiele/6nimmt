@@ -37,6 +37,9 @@ export const App = () => {
   }, [gameId])
 
   const reconnect = (onConnect: (stomp: Client) => void = () => { }) => {
+    if (stompClient) {
+      stompClient.disconnect()
+    }
     const isDev = process.env.NODE_ENV === "development";
     const hostname = window.location.hostname
     const port = window.location.port
