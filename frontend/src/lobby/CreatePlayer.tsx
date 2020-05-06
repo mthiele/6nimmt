@@ -36,6 +36,7 @@ export const CreatePlayer = (props: CreatePlayerProps & RouteComponentProps) => 
                         <label className="label">Nutzername</label>
                         <div className="control">
                             <input className="input"
+                                maxLength={32}
                                 value={name}
                                 onInput={event => setName((event.target as any).value)} />
                         </div>

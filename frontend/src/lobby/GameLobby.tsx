@@ -121,14 +121,14 @@ export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
                 <div className="column">
                     <h5 className="title is-5">Spieler</h5>
                     <ul className="list">
-                        {players.map(player => <li key={player.id} className="list-item">{player.name} {player.inGame && " (im Spiel)"}</li>)}
+                        {players.map(player => <li key={player.id} className="list-item word-wrap">{player.name} {player.inGame && " (im Spiel)"}</li>)}
                     </ul>
                 </div>
                 <div className="column">
                     <h5 className="title is-5">Spiele</h5>
                     <ul className="list">
                         {games.map(game =>
-                            <li key={game.id} className={classnames("list-item is-centered-vertically", game.started ? "game-started" : "game-available")}>
+                            <li key={game.id} className={classnames("list-item is-centered-vertically word-wrap", game.started ? "game-started" : "game-available")}>
                                 {game.id} ({players.find(p => p.id === game.creator)?.name}
                                 {game.activePlayers.filter(player => player !== game.creator).length > 0
                                     ? ", " + game.activePlayers
