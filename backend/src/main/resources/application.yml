@@ -7,3 +7,9 @@ server:
   port: 8080
   compression:
     enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus
