@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { Client, Message } from "webstomp-client";
-import { Game, Player } from "../model/Game";
-import { MessageTypes, START_GAME } from "../model/Messages";
-import { RouteComponentProps } from "@reach/router";
+import React, {useEffect, useState, useCallback} from "react";
+import {Client, Message} from "webstomp-client";
+import {Game, Player} from "../model/Game";
+import {MessageTypes, START_GAME} from "../model/Messages";
+import {RouteComponentProps} from "@reach/router";
 import classnames from "classnames"
 import "./GameLobby.scss"
 
@@ -14,7 +14,7 @@ interface GameLobbyProps {
 }
 
 export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
-    const { stompClient, thisPlayer, startedGame, navigate } = props;
+    const {stompClient, thisPlayer, startedGame, navigate} = props;
 
     const [buttonDisabled, setButtonDisabled] = useState(true)
     const [games, setGames] = useState([] as Game[])
@@ -119,34 +119,47 @@ export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
             <div className="columns">
                 <div className="column">
                     <h5 className="title is-5">Spieler</h5>
-                    <ul className="panel">
-                        {players.map(player => <li key={player.id} className="list-item word-wrap">{player.name} {player.inGame && " (im Spiel)"}</li>)}
-                    </ul>
+                    <div className="content">
+                        <ul>
+                            {players.map(player =>
+                                <li key={player.id} className="list-item word-wrap">
+                                    {player.name} {player.inGame && " (im Spiel)"}
+                                </li>)
+                            }
+                        </ul>
+                    </div>
                 </div>
                 <div className="column">
                     <h5 className="title is-5">Spiele</h5>
-                    <ul className="panel">
-                        {games.map(game =>
-                            <li key={game.id} className={classnames("list-item is-centered-vertically word-wrap", game.started ? "game-started" : "game-available")}>
-                                {game.id} ({players.find(p => p.id === game.creator)?.name}
-                                {game.activePlayers.filter(player => player !== game.creator).length > 0
-                                    ? ", " + game.activePlayers
-                                        .filter(player => player !== game.creator)
-                                        .map(player => players.find(p => p.id === player)?.name).join(", ") + ")"
-                                    : ")"}
-                                    &nbsp;
-                                {canJoinGame(game) && <button className="button" onClick={event => joinGame(game)}>Beitreten</button>}
-                                {canStartGame(game) && <button className="button" onClick={event => startGame(game)}>Starten</button>}
-                            </li>)
-                        }
-                    </ul>
+                    <div className="content">
+                        <ul>
+                            {games.map(game =>
+                                <li key={game.id}>
+                                    <div
+                                        className={classnames("is-centered-vertically word-wrap", game.started ? "game-started" : "game-available")}>
+                                        {game.id} ({players.find(p => p.id === game.creator)?.name}
+                                        {game.activePlayers.filter(player => player !== game.creator).length > 0
+                                            ? ", " + game.activePlayers
+                                            .filter(player => player !== game.creator)
+                                            .map(player => players.find(p => p.id === player)?.name).join(", ") + ")"
+                                            : ")"}
+                                        &nbsp;
+                                        {canJoinGame(game) &&
+                                        <button className="button" onClick={event => joinGame(game)}>Beitreten</button>}
+                                        {canStartGame(game) &&
+                                        <button className="button" onClick={event => startGame(game)}>Starten</button>}
+                                    </div>
+                                </li>)
+                            }
+                        </ul>
+                    </div>
                     {canCreateNewGame &&
-                        <button className="button is-primary" onClick={createNewGame} disabled={buttonDisabled}>
-                            Neues Spiel
+                    <button className="button is-primary" onClick={createNewGame} disabled={buttonDisabled}>
+                        Neues Spiel
                     </button>
                     }
                 </div>
-            </div >
-        </div >
+            </div>
+        </div>
     )
 }
