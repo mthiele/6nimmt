@@ -1,18 +1,30 @@
-import { navigate, RouteComponentProps } from "@reach/router"
-import React, { useEffect, useState, useCallback } from "react"
-import { DndProvider } from "react-dnd"
-import HTML5Backend from "react-dnd-html5-backend"
-import TouchBackend from "react-dnd-touch-backend"
-import { animated, useSpring, config } from "react-spring"
-import { Client, Message } from "webstomp-client"
-import { Card, Player, PlayerId, Row } from "../model/Game"
-import { EndRound, MessageTypes, playCard, PLAYED_CARD, REVEAL_ALL_CARDS, RoundState, ROUND_FINISHED, selectRowMessage, SELECT_ROW, START_STEP, UPDATED_ROWS } from "../model/Messages"
-import { useRefState } from "../util"
-import { SingleCard } from "./Card"
-import { EndResult } from "./EndResult"
-import { Heap } from "./Heap"
-import { PlayedCards } from "./PlayedCards"
-import { Rows } from "./Rows"
+import {RouteComponentProps} from "@reach/router"
+import React, {useCallback, useEffect, useState} from "react"
+import {DndProvider} from "react-dnd"
+import {HTML5Backend} from "react-dnd-html5-backend"
+import {TouchBackend} from "react-dnd-touch-backend"
+import {animated, config, useSpring} from "react-spring"
+import {Client, Message} from "webstomp-client"
+import {Card, Player, PlayerId, Row} from "../model/Game"
+import {
+    EndRound,
+    MessageTypes,
+    playCard,
+    PLAYED_CARD,
+    REVEAL_ALL_CARDS,
+    ROUND_FINISHED,
+    RoundState,
+    SELECT_ROW,
+    selectRowMessage,
+    START_STEP,
+    UPDATED_ROWS
+} from "../model/Messages"
+import {useRefState} from "../util"
+import {SingleCard} from "./Card"
+import {EndResult} from "./EndResult"
+import {Heap} from "./Heap"
+import {PlayedCards} from "./PlayedCards"
+import {Rows} from "./Rows"
 import _ from "lodash"
 
 export interface SechsNimmtProps {
@@ -198,13 +210,6 @@ export const SechsNimmt = (props: SechsNimmtProps & RouteComponentProps) => {
             animateCard.onFinished()
         }
     }, [animateCard])
-
-    // FIXME logging
-    // useEffect(() => {
-    //     console.log("~~~~~~~~~~~~~~~~~~~~")
-    //     console.log(placeholderPositions)
-    //     console.log(playedCardPositions)
-    // }, [placeholderPositions, playedCardPositions])
 
     const isTouchDevice = () => {
         if ("ontouchstart" in window) {

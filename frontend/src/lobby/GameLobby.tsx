@@ -110,7 +110,6 @@ export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
 
     return (
         <div>
-            <h1 className="title is-1">Lobby</h1>
             <div className="level">
                 <div className="level-left">
                     <div>Hallo&nbsp;</div>
@@ -120,13 +119,13 @@ export const GameLobby = (props: GameLobbyProps & RouteComponentProps) => {
             <div className="columns">
                 <div className="column">
                     <h5 className="title is-5">Spieler</h5>
-                    <ul className="list">
+                    <ul className="panel">
                         {players.map(player => <li key={player.id} className="list-item word-wrap">{player.name} {player.inGame && " (im Spiel)"}</li>)}
                     </ul>
                 </div>
                 <div className="column">
                     <h5 className="title is-5">Spiele</h5>
-                    <ul className="list">
+                    <ul className="panel">
                         {games.map(game =>
                             <li key={game.id} className={classnames("list-item is-centered-vertically word-wrap", game.started ? "game-started" : "game-available")}>
                                 {game.id} ({players.find(p => p.id === game.creator)?.name}

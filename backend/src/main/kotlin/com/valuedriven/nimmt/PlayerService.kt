@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Service
 import java.security.Principal
-import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -51,8 +50,8 @@ class PlayerService(
 
     fun createPlayer(playerName: String, user: Principal) {
         // use a random ID as the given user could be a cached older user
-        val newPlayer = Player(name = playerName, id = UUID.randomUUID().toString(), inGame = null, active = true)
-        players.putIfAbsent(newPlayer.id, newPlayer)
+        val newPlayer = Player(name = playerName, id = user.name, inGame = null, active = true)
+        players[newPlayer.id] = newPlayer
 
         logger.info("create player: ${user.name} (${players[user.name]?.name})")
 

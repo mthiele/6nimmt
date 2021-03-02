@@ -1,23 +1,28 @@
-import { RouteComponentProps } from "@reach/router";
-import React, { useState } from "react";
-import { Client, Message } from "webstomp-client";
-import { STORAGE_USER } from "../constants";
-import { Player } from "../model/Game";
+import {Redirect, RouteComponentProps} from "@reach/router";
+import React, {useState} from "react";
+import {Client, Message} from "webstomp-client";
+import {STORAGE_USER} from "../constants";
+import {Player} from "../model/Game";
 
 interface CreatePlayerProps {
     stompClient: Client | undefined;
     setPlayer: (player: Player) => void;
+    existingPlayer: Player | undefined;
     reconnect: (onConnect: (stomp: Client) => void) => void;
 }
 
 export const CreatePlayer = (props: CreatePlayerProps & RouteComponentProps) => {
-    const { stompClient, setPlayer, reconnect, navigate } = props;
+    const {stompClient, setPlayer, existingPlayer, reconnect, navigate} = props;
     const [name, setName] = useState("")
+
+    if (existingPlayer !== undefined) {
+        return <Redirect to="/gameLobby" noThrow={true}/>
+    }
 
     const joinLobby = () => {
         const subscription = stompClient?.subscribe("/user/queue/player", (message: Message) => {
             const player = JSON.parse(message.body) as Player
-            sessionStorage.setItem(STORAGE_USER, player.id)
+            localStorage.setItem(STORAGE_USER, player.id)
             setPlayer(player)
 
             subscription?.unsubscribe()
@@ -36,9 +41,9 @@ export const CreatePlayer = (props: CreatePlayerProps & RouteComponentProps) => 
                         <label className="label">Nutzername</label>
                         <div className="control">
                             <input className="input"
-                                maxLength={32}
-                                value={name}
-                                onInput={event => setName((event.target as any).value)} />
+                                   maxLength={32}
+                                   value={name}
+                                   onInput={event => setName((event.target as any).value)}/>
                         </div>
                     </div>
                     <div className="field">

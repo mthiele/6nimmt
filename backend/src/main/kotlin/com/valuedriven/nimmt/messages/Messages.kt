@@ -22,6 +22,10 @@ sealed class Message<T>(val messageType: String, val payload: T?) {
         result = 31 * result + (payload?.hashCode() ?: 0)
         return result
     }
+
+    override fun toString(): String {
+        return this::class.java.name + "(messageType: $messageType, payload: $payload)"
+    }
 }
 class StartGameMessage() : Message<Void>("startGame", null)
 class StartStepMessage(payload: PrivateRoundState) : Message<PrivateRoundState>("startStep", payload)

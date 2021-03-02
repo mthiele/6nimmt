@@ -1,15 +1,13 @@
-import React, { MutableRefObject, useEffect, useState } from 'react';
-import Stomp, { Client, Message } from "webstomp-client";
+import React, {useEffect, useState} from 'react';
+import Stomp, {Client, Message} from "webstomp-client";
 import './App.css';
-import { SechsNimmt } from './game/SechsNimmt';
-import { CreatePlayer } from './lobby/CreatePlayer';
-import { GameLobby } from './lobby/GameLobby';
-import { Player } from './model/Game';
-import { Router, navigate } from '@reach/router';
-import { STORAGE_USER } from './constants';
-import { Navbar } from './Navbar';
-
-export type ClientRef = MutableRefObject<Client | undefined>
+import {SechsNimmt} from './game/SechsNimmt';
+import {CreatePlayer} from './lobby/CreatePlayer';
+import {GameLobby} from './lobby/GameLobby';
+import {Player} from './model/Game';
+import {navigate, Router} from '@reach/router';
+import {STORAGE_USER} from './constants';
+import {Navbar} from './Navbar';
 
 export const App = () => {
 
@@ -19,14 +17,19 @@ export const App = () => {
   const [player, setPlayer] = useState(undefined as Player | undefined);
   const [gameId, setGameId] = useState("")
 
+  function refreshPlayerStatus(stompClient: Client) {
+    const subscription = stompClient?.subscribe("/user/queue/players", (message: Message) => {
+      const players = JSON.parse(message.body) as Player[]
+      const player = players.find(p => p.id === localStorage.getItem(STORAGE_USER));
+      setPlayer(player)
+      subscription.unsubscribe()
+    })
+    stompClient?.send("/app/listPlayers", "")
+  }
+
   useEffect(() => {
     reconnect((stompClient) => {
-      const subscription = stompClient?.subscribe("/user/queue/players", (message: Message) => {
-        const players = JSON.parse(message.body) as Player[]
-        setPlayer(players.find(p => p.id === sessionStorage.getItem(STORAGE_USER)))
-        subscription.unsubscribe()
-      })
-      stompClient?.send("/app/listPlayers", "")
+      refreshPlayerStatus(stompClient);
     })
   }, [])
 
@@ -38,7 +41,8 @@ export const App = () => {
 
   const reconnect = (onConnect: (stomp: Client) => void = () => { }) => {
     if (stompClient) {
-      stompClient.disconnect()
+      onConnect(stompClient)
+      return
     }
     const isDev = process.env.NODE_ENV === "development";
     const hostname = window.location.hostname
@@ -46,11 +50,11 @@ export const App = () => {
     const socket = isDev
       ? new WebSocket("ws://192.168.2.100:8080/websocket")
       : new WebSocket(`ws://${hostname}:${port}/websocket`)
-    const stomp = Stomp.over(socket)
+    const stomp = Stomp.over(socket, {heartbeat: {incoming: 5000, outgoing: 5000}})
     if (!isDev) {
       stomp.debug = () => { }
     }
-    stomp.connect({ token: sessionStorage.getItem(STORAGE_USER) || "" }, (frame: any) => {
+    stomp.connect({ token: localStorage.getItem(STORAGE_USER) || "" }, (frame: any) => {
       setStompClient(stomp)
       onConnect(stomp)
     }, () => setTimeout(() => reconnect(onConnect), 3000))
@@ -58,7 +62,8 @@ export const App = () => {
 
   const onClickLogout = () => {
     stompClient?.send("/app/logout")
-    sessionStorage.removeItem(STORAGE_USER)
+    localStorage.removeItem(STORAGE_USER)
+    setPlayer(undefined)
     navigate && navigate("/")
   }
 
@@ -69,7 +74,7 @@ export const App = () => {
         <div className="container">
           <StompContext.Provider value={stompClient}>
             <Router>
-              <CreatePlayer path="/" stompClient={stompClient} setPlayer={setPlayer} reconnect={reconnect} />
+              <CreatePlayer path="/" stompClient={stompClient} setPlayer={setPlayer} existingPlayer={player} reconnect={reconnect} />
               <GameLobby path="/gameLobby" stompClient={stompClient} thisPlayer={player} startedGame={setGameId} />
               <SechsNimmt path="/game/:gameId" stompClient={stompClient} gameId={gameId} player={player} />
             </Router>
@@ -78,7 +83,7 @@ export const App = () => {
       </div>
       <footer className="footer">
         <div className="content has-text-centered">
-          v0.9.0 created by mthiele
+          v0.9.1 created by mthiele
         </div>
       </footer>
     </div>

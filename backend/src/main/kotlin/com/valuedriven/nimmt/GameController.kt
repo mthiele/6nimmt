@@ -48,7 +48,7 @@ class GameController(
     }
 
     @MessageMapping("/createNewGame")
-    fun startNewGame(user: Principal, headerAccessor: SimpMessageHeaderAccessor) {
+    fun createNewGame(user: Principal, headerAccessor: SimpMessageHeaderAccessor) {
         val gameId = gameService.startNewGame(user)
         playerService.playerJoinsGame(user, gameId)
     }
